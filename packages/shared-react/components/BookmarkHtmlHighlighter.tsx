@@ -411,7 +411,7 @@ const BookmarkHTMLHighlighter = forwardRef<
         dangerouslySetInnerHTML={{ __html: htmlContent }}
         onPointerUp={handlePointerUp}
         className={cn(
-          "prose prose-neutral max-w-none break-words dark:prose-invert [&_code]:break-all [&_img]:h-auto [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto",
+          "prose prose-neutral max-w-none break-words dark:prose-invert selection:bg-primary selection:text-primary-foreground [&_code]:break-all [&_img]:h-auto [&_img]:max-w-full [&_pre]:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto",
           className,
         )}
         style={style}
