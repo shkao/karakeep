@@ -59,6 +59,8 @@ vi.mock("expo/fetch", () => ({
   fetch: () => Promise.reject(new Error("no images in these tests")),
 }));
 
+vi.mock("expo-file-system/legacy", () => ({}));
+
 vi.mock("./settings", () => ({
   useSettings: {
     getState: () => ({ settings: { settings: state.settings } }),

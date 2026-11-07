@@ -3,6 +3,7 @@ import { Alert } from "react-native";
 import { onlineManager, useQueryClient } from "@tanstack/react-query";
 
 import { useTRPC } from "@karakeep/shared-react/trpc";
+import { embedOfflineArticleImages } from "../../lib/offlineArticleImages";
 
 import { useToast } from "../ui/Toast";
 import {
@@ -45,13 +46,15 @@ export function useOfflineAvailability(bookmarkId: string) {
     );
 
     try {
-      const bookmark = onlineManager.isOnline()
+      let bookmark = onlineManager.isOnline()
         ? await queryClient.fetchQuery(contentOptions)
         : queryClient.getQueryData(contentOptions.queryKey);
 
       if (!bookmark) {
         throw new Error("Connect to the internet to save this article.");
       }
+
+      bookmark = await embedOfflineArticleImages(bookmark, settings);
 
       saveOfflineArticle(scope, {
         schemaVersion: OFFLINE_LIBRARY_SCHEMA_VERSION,

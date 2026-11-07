@@ -352,6 +352,7 @@ export const bookmarkLinks = sqliteTable(
 
 export const enum AssetTypes {
   LINK_BANNER_IMAGE = "linkBannerImage",
+  LINK_ARTICLE_IMAGE = "linkArticleImage",
   LINK_SCREENSHOT = "linkScreenshot",
   LINK_PDF = "linkPdf",
   ASSET_SCREENSHOT = "assetScreenshot",
@@ -374,6 +375,7 @@ export const assets = sqliteTable(
     assetType: text("assetType", {
       enum: [
         AssetTypes.LINK_BANNER_IMAGE,
+        AssetTypes.LINK_ARTICLE_IMAGE,
         AssetTypes.LINK_SCREENSHOT,
         AssetTypes.LINK_PDF,
         AssetTypes.ASSET_SCREENSHOT,

@@ -30,6 +30,7 @@ const ASSET_ICONS: Record<ZAssetType, typeof Paperclip> = {
   fullPageArchive: Archive,
   precrawledArchive: Archive,
   bannerImage: Image,
+  articleImage: Image,
   video: Video,
   bookmarkAsset: Paperclip,
   linkHtmlContent: FileCode,
@@ -44,9 +45,9 @@ export default function AttachmentBox({ bookmark }: { bookmark: ZBookmark }) {
   const { toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const downloadInProgress = useRef(false);
-  const assets = [...bookmark.assets].sort((a, b) =>
-    a.assetType.localeCompare(b.assetType),
-  );
+  const assets = bookmark.assets
+    .filter((asset) => asset.assetType !== "articleImage")
+    .sort((a, b) => a.assetType.localeCompare(b.assetType));
 
   const download = async (asset: ZBookmark["assets"][number]) => {
     if (downloadInProgress.current) return;

@@ -4,6 +4,21 @@ export function getAssetUrl(assetId: string) {
   return `/api/assets/${assetId}`;
 }
 
+export function resolveArticleImageUrls(
+  html: string,
+  imageIds: string[],
+  getUrl: (id: string) => string,
+): string {
+  const allowedIds = new Set(imageIds);
+  return html.replace(
+    /(<img\b(?:[^">]|"[^"]*")*?\ssrc=")\/api\/assets\/([\w-]+)(")/g,
+    (match, prefix: string, id: string, suffix: string) =>
+      allowedIds.has(id)
+        ? `${prefix}${getUrl(id).replace(/&/g, "&amp;")}${suffix}`
+        : match,
+  );
+}
+
 export function humanFriendlyNameForAssertType(type: ZAssetType) {
   const map: Record<ZAssetType, string> = {
     screenshot: "Screenshot",
@@ -12,6 +27,7 @@ export function humanFriendlyNameForAssertType(type: ZAssetType) {
     fullPageArchive: "Full Page Archive",
     precrawledArchive: "Precrawled Archive",
     bannerImage: "Banner Image",
+    articleImage: "Article Image",
     video: "Video",
     bookmarkAsset: "Bookmark Asset",
     linkHtmlContent: "HTML Content",

@@ -38,6 +38,7 @@ import {
 } from "./offlineSyncEngine";
 import { useSettings } from "./settings";
 import { megabytesToBytes } from "./storageSize";
+import { embedOfflineArticleImages } from "./offlineArticleImages";
 
 // Foreground triggers (app open, timer) back off for this long after a pass.
 export const REFRESH_THROTTLE = 5 * 60 * 1000;
@@ -393,7 +394,7 @@ async function runOnce(
       isExcluded: (bookmarkId) =>
         getOfflineDownloadPrefs(scope).excludedIds.includes(bookmarkId),
       prepare: async (candidate: SyncCandidate) => {
-        const bookmark = await client.bookmarks.getBookmark.query(
+        let bookmark = await client.bookmarks.getBookmark.query(
           { bookmarkId: candidate.bookmarkId, includeContent: true },
           { signal },
         );
@@ -403,6 +404,11 @@ async function runOnce(
         ) {
           throw new ContentUnavailable();
         }
+        bookmark = await embedOfflineArticleImages(
+          bookmark,
+          settings,
+          checkpoint,
+        );
         return {
           byteSize: estimateOfflineArticleSize(bookmark),
           save: () => {

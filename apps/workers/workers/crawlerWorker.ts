@@ -56,6 +56,7 @@ import {
   saveAssetFromFile,
   setSpanAttributes,
   silentDeleteAsset,
+  StorageQuotaError,
   SUPPORTED_UPLOAD_ASSET_TYPES,
   triggerSearchReindex,
   VideoWorkerQueue,
@@ -105,6 +106,10 @@ import {
   waitForPageLoadAndAutoconsent,
 } from "./utils/autoconsent";
 import { waitForChallengeToClear } from "./utils/botChallenge";
+import {
+  captureArticleImages,
+  getCapturedArticleImageSources,
+} from "./utils/articleImages";
 import {
   CONTEXT_CLOSE_TIMEOUT_MS,
   getBrowserUserAgent,
@@ -904,7 +909,7 @@ interface CrawlAndParseUrlArgs {
  * and assets. Returns the rendered page's html and final url, which the
  * full-page archival (run later by the caller) works from.
  */
-const crawlAndParseUrl = traced(
+export const crawlAndParseUrl = traced(
   "crawlAndParseUrl",
   async (
     ctx: CrawlContext,
@@ -1055,128 +1060,339 @@ const crawlAndParseUrl = traced(
 
     let readableContent = parsedReadableContent;
 
-    const screenshotAssetInfo = await raceWith(
-      storeCapturedAsset(ctx, "screenshot", screenshot),
-      abortRace(abortSignal),
-    );
-    abortSignal.throwIfAborted();
-
-    const pdfAssetInfo = await raceWith(
-      storeCapturedAsset(ctx, "pdf", pdf),
-      abortRace(abortSignal),
-    );
-    abortSignal.throwIfAborted();
-
-    const htmlContentAssetInfo = await storeHtmlContent(
-      ctx,
-      readableContent?.content,
-    );
-    abortSignal.throwIfAborted();
-    let imageAssetInfo: DBAssetType | null = null;
-    if (meta.image && serverConfig.crawler.downloadBannerImage) {
-      const banner = await downloadAndStoreBanner(ctx, meta.image);
-      if (banner) {
-        imageAssetInfo = {
-          id: banner.assetId,
-          bookmarkId,
-          userId,
-          assetType: AssetTypes.LINK_BANNER_IMAGE,
-          contentType: banner.contentType,
-          size: banner.size,
-        };
+    const articleImageAssets: DBAssetType[] = [];
+    const newArticleImageIds: string[] = [];
+    const stagedAssetIds = new Set<string>();
+    const previousArticleImages = await db.query.assets.findMany({
+      where: and(
+        eq(assets.bookmarkId, bookmarkId),
+        eq(assets.assetType, AssetTypes.LINK_ARTICLE_IMAGE),
+      ),
+    });
+    let previousImageSources = new Map<string, string>();
+    if (previousArticleImages.length > 0) {
+      const { data: previousHtml, error } = await tryCatch(
+        (async () => {
+          if (oldAssets.contentAssetId) {
+            return (
+              await readAsset({ userId, assetId: oldAssets.contentAssetId })
+            ).asset.toString("utf8");
+          }
+          const link = await db.query.bookmarkLinks.findFirst({
+            where: eq(bookmarkLinks.id, bookmarkId),
+            columns: { htmlContent: true },
+          });
+          return link?.htmlContent ?? "";
+        })(),
+      );
+      if (error) {
+        log.warn(`Failed to read previous article images: ${error}`);
+      } else {
+        previousImageSources = getCapturedArticleImageSources(previousHtml);
       }
     }
-    abortSignal.throwIfAborted();
+    const reusePreviousImage = (imageUrl: string) => {
+      const previousId = previousImageSources.get(imageUrl);
+      const previous = previousArticleImages.find(
+        (asset) => asset.id === previousId,
+      );
+      if (!previous) {
+        return null;
+      }
+      if (!articleImageAssets.some((asset) => asset.id === previous.id)) {
+        articleImageAssets.push(previous);
+      }
+      return previous.id;
+    };
+    let contentCommitted = false;
+    try {
+      if (readableContent) {
+        let downloadedBytes = 0;
+        let attemptedImages = 0;
+        const maxBytes = serverConfig.maxAssetSizeMb * 1024 * 1024;
+        readableContent.content = await captureArticleImages(
+          readableContent.content,
+          async (imageUrl) => {
+            if (attemptedImages >= 100 || downloadedBytes >= maxBytes) {
+              return reusePreviousImage(imageUrl);
+            }
+            attemptedImages++;
+            try {
+              const imageContext = {
+                ...ctx,
+                abortSignal: AbortSignal.any([
+                  abortSignal,
+                  AbortSignal.timeout(10_000),
+                ]),
+              };
+              const image = await fetchImage(
+                imageContext,
+                imageUrl,
+                "article image",
+                maxBytes - downloadedBytes,
+              );
+              downloadedBytes += image.image.byteLength;
+              if (!IMAGE_ASSET_TYPES.has(image.contentType)) {
+                log.warn(
+                  `Skipping article image with unsupported type: ${image.contentType}`,
+                );
+                return reusePreviousImage(imageUrl);
+              }
+              // Earlier images are staged until the content transaction commits,
+              // so include their sizes when checking the user's remaining quota.
+              const quotaApproved = await QuotaService.checkStorageQuota(
+                db,
+                userId,
+                articleImageAssets
+                  .filter((asset) => newArticleImageIds.includes(asset.id))
+                  .reduce((sum, asset) => sum + (asset.size ?? 0), 0) +
+                  image.image.byteLength,
+              );
+              const assetId = newAssetId();
+              await saveAsset({
+                userId,
+                assetId,
+                asset: image.image,
+                metadata: { contentType: image.contentType },
+                quotaApproved,
+              }).catch(async (error) => {
+                await silentDeleteAsset(userId, assetId);
+                throw error;
+              });
+              newArticleImageIds.push(assetId);
+              stagedAssetIds.add(assetId);
+              articleImageAssets.push({
+                id: assetId,
+                bookmarkId,
+                userId,
+                assetType: AssetTypes.LINK_ARTICLE_IMAGE,
+                contentType: image.contentType,
+                size: image.image.byteLength,
+              });
+              return assetId;
+            } catch (error) {
+              abortSignal.throwIfAborted();
+              log.warn(
+                `Failed to save article image from "${truncateUrl(imageUrl)}": ${error}`,
+              );
+              const previousId = reusePreviousImage(imageUrl);
+              if (
+                !previousId &&
+                error instanceof StorageQuotaError &&
+                previousArticleImages.length > 0
+              ) {
+                throw error;
+              }
+              return previousId;
+            }
+          },
+        );
+        if (attemptedImages >= 100 || downloadedBytes >= maxBytes) {
+          log.warn(
+            "Article image capture reached its page limit; remaining images use remote URLs.",
+          );
+        }
+        log.info(
+          `Saved ${articleImageAssets.length} article images (${downloadedBytes} downloaded bytes).`,
+        );
+      }
 
-    // Phase 2: Write content and asset references.
-    // TODO(important): Restrict the size of content to store
-    const assetIdsToDelete: (string | undefined)[] = [];
-    const inlineHtmlContent =
-      htmlContentAssetInfo.result === "store_inline"
-        ? (readableContent?.content ?? null)
-        : null;
-    readableContent = null;
-    await db.transaction((txn) => {
-      txn
-        .update(bookmarkLinks)
-        .set({
-          crawledAt: new Date(),
-          htmlContent: inlineHtmlContent,
-          contentAssetId:
-            htmlContentAssetInfo.result === "stored"
-              ? htmlContentAssetInfo.assetId
-              : null,
-          readerViewStatus: readerViewAssessment?.status ?? null,
-          readerViewScore: readerViewAssessment?.score ?? null,
-          readerViewReasons,
-          readerViewClassifierVersion:
-            readerViewAssessment?.classifierVersion ?? null,
-        })
-        .where(eq(bookmarkLinks.id, bookmarkId))
-        .run();
-
+      const screenshotAssetInfo = await raceWith(
+        storeCapturedAsset(ctx, "screenshot", screenshot),
+        abortRace(abortSignal),
+      );
       if (screenshotAssetInfo) {
-        updateAsset(
-          oldAssets.screenshotAssetId,
-          {
-            id: screenshotAssetInfo.assetId,
-            bookmarkId,
-            userId,
-            assetType: AssetTypes.LINK_SCREENSHOT,
-            contentType: screenshotAssetInfo.contentType,
-            size: screenshotAssetInfo.size,
-            fileName: screenshotAssetInfo.fileName,
-          },
-          txn,
-        );
-        assetIdsToDelete.push(oldAssets.screenshotAssetId);
+        stagedAssetIds.add(screenshotAssetInfo.assetId);
       }
-      if (pdfAssetInfo) {
-        updateAsset(
-          oldAssets.pdfAssetId,
-          {
-            id: pdfAssetInfo.assetId,
-            bookmarkId,
-            userId,
-            assetType: AssetTypes.LINK_PDF,
-            contentType: pdfAssetInfo.contentType,
-            size: pdfAssetInfo.size,
-            fileName: pdfAssetInfo.fileName,
-          },
-          txn,
-        );
-        assetIdsToDelete.push(oldAssets.pdfAssetId);
-      }
-      if (imageAssetInfo) {
-        updateAsset(oldAssets.imageAssetId, imageAssetInfo, txn);
-        assetIdsToDelete.push(oldAssets.imageAssetId);
-      }
-      if (htmlContentAssetInfo.result === "stored") {
-        updateAsset(
-          oldAssets.contentAssetId,
-          {
-            id: htmlContentAssetInfo.assetId,
-            bookmarkId,
-            userId,
-            assetType: AssetTypes.LINK_HTML_CONTENT,
-            contentType: ASSET_TYPES.TEXT_HTML,
-            size: htmlContentAssetInfo.size,
-            fileName: null,
-          },
-          txn,
-        );
-        assetIdsToDelete.push(oldAssets.contentAssetId);
-      } else if (oldAssets.contentAssetId) {
-        // Unlink the old content asset
-        txn.delete(assets).where(eq(assets.id, oldAssets.contentAssetId)).run();
-        assetIdsToDelete.push(oldAssets.contentAssetId);
-      }
-    });
+      abortSignal.throwIfAborted();
 
-    // Delete the old assets if any
-    await Promise.all(
-      assetIdsToDelete.map((assetId) => silentDeleteAsset(userId, assetId)),
-    );
+      const pdfAssetInfo = await raceWith(
+        storeCapturedAsset(ctx, "pdf", pdf),
+        abortRace(abortSignal),
+      );
+      if (pdfAssetInfo) {
+        stagedAssetIds.add(pdfAssetInfo.assetId);
+      }
+      abortSignal.throwIfAborted();
+
+      const htmlContentAssetInfo = await storeHtmlContent(
+        ctx,
+        readableContent?.content,
+      );
+      if (htmlContentAssetInfo.result === "stored") {
+        stagedAssetIds.add(htmlContentAssetInfo.assetId);
+      }
+      if (
+        readableContent?.content &&
+        htmlContentAssetInfo.result === "not_stored"
+      ) {
+        throw new Error(
+          "Could not store article content; keeping the previous capture.",
+        );
+      }
+      abortSignal.throwIfAborted();
+      let imageAssetInfo: DBAssetType | null = null;
+      if (meta.image && serverConfig.crawler.downloadBannerImage) {
+        const banner = await downloadAndStoreBanner(ctx, meta.image);
+        if (banner) {
+          stagedAssetIds.add(banner.assetId);
+          imageAssetInfo = {
+            id: banner.assetId,
+            bookmarkId,
+            userId,
+            assetType: AssetTypes.LINK_BANNER_IMAGE,
+            contentType: banner.contentType,
+            size: banner.size,
+          };
+        }
+      }
+      abortSignal.throwIfAborted();
+
+      if (articleImageAssets.length > 0) {
+        const stagedBytes =
+          articleImageAssets
+            .filter((asset) => newArticleImageIds.includes(asset.id))
+            .reduce((sum, asset) => sum + (asset.size ?? 0), 0) +
+          (screenshotAssetInfo?.size ?? 0) +
+          (pdfAssetInfo?.size ?? 0) +
+          (imageAssetInfo?.size ?? 0) +
+          (htmlContentAssetInfo.result === "stored"
+            ? htmlContentAssetInfo.size
+            : 0);
+        await QuotaService.checkStorageQuota(db, userId, stagedBytes);
+        abortSignal.throwIfAborted();
+      }
+
+      // Phase 2: Write content and asset references.
+      // TODO(important): Restrict the size of content to store
+      const assetIdsToDelete: (string | undefined)[] = [];
+      const inlineHtmlContent =
+        htmlContentAssetInfo.result === "store_inline"
+          ? (readableContent?.content ?? null)
+          : null;
+      readableContent = null;
+      await db.transaction((txn) => {
+        const previousArticleImages = txn
+          .select({ id: assets.id })
+          .from(assets)
+          .where(
+            and(
+              eq(assets.bookmarkId, bookmarkId),
+              eq(assets.assetType, AssetTypes.LINK_ARTICLE_IMAGE),
+            ),
+          )
+          .all();
+        txn
+          .delete(assets)
+          .where(
+            and(
+              eq(assets.bookmarkId, bookmarkId),
+              eq(assets.assetType, AssetTypes.LINK_ARTICLE_IMAGE),
+            ),
+          )
+          .run();
+        assetIdsToDelete.push(
+          ...previousArticleImages
+            .filter(
+              (asset) =>
+                !articleImageAssets.some((current) => current.id === asset.id),
+            )
+            .map((asset) => asset.id),
+        );
+        if (articleImageAssets.length > 0) {
+          txn.insert(assets).values(articleImageAssets).run();
+        }
+        txn
+          .update(bookmarkLinks)
+          .set({
+            crawledAt: new Date(),
+            htmlContent: inlineHtmlContent,
+            contentAssetId:
+              htmlContentAssetInfo.result === "stored"
+                ? htmlContentAssetInfo.assetId
+                : null,
+            readerViewStatus: readerViewAssessment?.status ?? null,
+            readerViewScore: readerViewAssessment?.score ?? null,
+            readerViewReasons,
+            readerViewClassifierVersion:
+              readerViewAssessment?.classifierVersion ?? null,
+          })
+          .where(eq(bookmarkLinks.id, bookmarkId))
+          .run();
+
+        if (screenshotAssetInfo) {
+          updateAsset(
+            oldAssets.screenshotAssetId,
+            {
+              id: screenshotAssetInfo.assetId,
+              bookmarkId,
+              userId,
+              assetType: AssetTypes.LINK_SCREENSHOT,
+              contentType: screenshotAssetInfo.contentType,
+              size: screenshotAssetInfo.size,
+              fileName: screenshotAssetInfo.fileName,
+            },
+            txn,
+          );
+          assetIdsToDelete.push(oldAssets.screenshotAssetId);
+        }
+        if (pdfAssetInfo) {
+          updateAsset(
+            oldAssets.pdfAssetId,
+            {
+              id: pdfAssetInfo.assetId,
+              bookmarkId,
+              userId,
+              assetType: AssetTypes.LINK_PDF,
+              contentType: pdfAssetInfo.contentType,
+              size: pdfAssetInfo.size,
+              fileName: pdfAssetInfo.fileName,
+            },
+            txn,
+          );
+          assetIdsToDelete.push(oldAssets.pdfAssetId);
+        }
+        if (imageAssetInfo) {
+          updateAsset(oldAssets.imageAssetId, imageAssetInfo, txn);
+          assetIdsToDelete.push(oldAssets.imageAssetId);
+        }
+        if (htmlContentAssetInfo.result === "stored") {
+          updateAsset(
+            oldAssets.contentAssetId,
+            {
+              id: htmlContentAssetInfo.assetId,
+              bookmarkId,
+              userId,
+              assetType: AssetTypes.LINK_HTML_CONTENT,
+              contentType: ASSET_TYPES.TEXT_HTML,
+              size: htmlContentAssetInfo.size,
+              fileName: null,
+            },
+            txn,
+          );
+          assetIdsToDelete.push(oldAssets.contentAssetId);
+        } else if (oldAssets.contentAssetId) {
+          // Unlink the old content asset
+          txn
+            .delete(assets)
+            .where(eq(assets.id, oldAssets.contentAssetId))
+            .run();
+          assetIdsToDelete.push(oldAssets.contentAssetId);
+        }
+      });
+      contentCommitted = true;
+
+      // Delete the old assets if any
+      await Promise.all(
+        assetIdsToDelete.map((assetId) => silentDeleteAsset(userId, assetId)),
+      );
+    } finally {
+      if (!contentCommitted) {
+        await Promise.all(
+          [...stagedAssetIds].map((id) => silentDeleteAsset(userId, id)),
+        );
+      }
+    }
 
     return { htmlContent, url: browserUrl };
   },
@@ -1981,9 +2197,13 @@ async function fetchAsset(ctx: CrawlContext, url: string, fileType: string) {
   return { contentType, body: response.body };
 }
 
-async function fetchImage(ctx: CrawlContext, url: string) {
-  const { contentType, body } = await fetchAsset(ctx, url, "banner image");
-  const maxBytes = serverConfig.maxAssetSizeMb * 1024 * 1024;
+async function fetchImage(
+  ctx: CrawlContext,
+  url: string,
+  label = "banner image",
+  maxBytes = serverConfig.maxAssetSizeMb * 1024 * 1024,
+) {
+  const { contentType, body } = await fetchAsset(ctx, url, label);
   // Grows in place as chunks arrive, so the banner is never held twice in memory.
   const buffer = new ArrayBuffer(0, { maxByteLength: maxBytes });
   const bytes = new Uint8Array(buffer);

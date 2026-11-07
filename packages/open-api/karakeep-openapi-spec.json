@@ -449,6 +449,7 @@
                   "type": "string",
                   "enum": [
                     "linkHtmlContent",
+                    "articleImage",
                     "screenshot",
                     "pdf",
                     "assetScreenshot",
@@ -2329,6 +2330,7 @@
                     "type": "string",
                     "enum": [
                       "linkHtmlContent",
+                      "articleImage",
                       "screenshot",
                       "pdf",
                       "assetScreenshot",
@@ -2367,6 +2369,7 @@
                       "type": "string",
                       "enum": [
                         "linkHtmlContent",
+                        "articleImage",
                         "screenshot",
                         "pdf",
                         "assetScreenshot",
