@@ -59,7 +59,6 @@
   "layouts": {
     "list": "Danh sách",
     "grid": "Lưới",
-    "masonry": "Masonry",
     "compact": "Gọn"
   },
   "settings": {

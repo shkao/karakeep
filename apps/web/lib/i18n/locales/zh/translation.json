@@ -46,7 +46,6 @@
     "last_used": "上次使用"
   },
   "layouts": {
-    "masonry": "瀑布流",
     "grid": "网格",
     "list": "列表",
     "compact": "紧凑"

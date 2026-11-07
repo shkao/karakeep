@@ -133,7 +133,6 @@ export default function LinkCard({
       title={<LinkTitle bookmark={bookmarkLink} />}
       footer={<FooterLinkURL url={getSourceUrl(bookmarkLink)} />}
       bookmark={bookmarkLink}
-      wrapTags={false}
       image={(layout, className) => (
         <LinkImage
           className={className}

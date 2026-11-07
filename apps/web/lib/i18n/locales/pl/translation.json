@@ -949,7 +949,6 @@
     }
   },
   "layouts": {
-    "masonry": "Mozaika",
     "grid": "Siatka",
     "list": "Lista",
     "compact": "Kompaktowy"

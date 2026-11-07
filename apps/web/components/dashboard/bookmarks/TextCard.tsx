@@ -37,15 +37,12 @@ export default function TextCard({
             <FooterLinkURL url={getSourceUrl(bookmark)} />
           )
         }
-        wrapTags={true}
         bookmark={bookmark}
         className={className}
         bookmarkIndex={bookmarkIndex}
-        fitHeight={true}
         image={(layout, className) =>
           bookmarkLayoutSwitch(layout, {
             grid: null,
-            masonry: null,
             compact: null,
             list: banner ? (
               <div className="relative size-full flex-1">

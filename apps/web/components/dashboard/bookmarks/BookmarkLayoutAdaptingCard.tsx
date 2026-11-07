@@ -52,8 +52,6 @@ interface Props {
   content?: ReactNode;
   footer?: ReactNode;
   className?: string;
-  fitHeight?: boolean;
-  wrapTags: boolean;
   bookmarkIndex?: number;
 }
 
@@ -369,69 +367,6 @@ function ListView({
   );
 }
 
-function GridView({
-  bookmark,
-  image,
-  title,
-  content,
-  footer,
-  className,
-  wrapTags,
-  layout,
-  fitHeight = false,
-  bookmarkIndex,
-}: Props & { layout: BookmarksLayoutTypes }) {
-  const { showNotes, showTags, showTitle, imageFit } =
-    useBookmarkDisplaySettings();
-  const imgFitClass = switchCase(imageFit, {
-    cover: "object-cover",
-    contain: "object-contain",
-  });
-  const note = showNotes ? bookmark.note?.trim() : undefined;
-  const img = image(
-    "grid",
-    cn("h-56 min-h-56 w-full rounded-t-lg", imgFitClass),
-  );
-
-  return (
-    <div
-      className={cn(
-        "group relative flex flex-col overflow-hidden rounded-lg",
-        className,
-        fitHeight && layout != "grid" ? "max-h-96" : "h-96",
-      )}
-      data-bookmark-index={bookmarkIndex}
-    >
-      <BulkEditSelectionOverlay bookmark={bookmark} />
-      <OwnerIndicator bookmark={bookmark} />
-      <DragHandle bookmark={bookmark} className="left-2 top-2" />
-      <HoverActionBar bookmark={bookmark} />
-      {img && <div className="h-56 w-full shrink-0 overflow-hidden">{img}</div>}
-      <div className="flex h-full flex-col justify-between gap-2 overflow-hidden p-2">
-        <div className="grow-1 flex flex-col gap-2 overflow-hidden">
-          {showTitle && title && (
-            <div className="line-clamp-2 flex-none shrink-0 overflow-hidden text-ellipsis break-words text-lg">
-              {title}
-            </div>
-          )}
-          {content && <div className="shrink-1 overflow-hidden">{content}</div>}
-          {note && <NotePreview note={note} bookmarkId={bookmark.id} />}
-          {showTags && (
-            <div className="flex shrink-0 flex-wrap gap-1 overflow-hidden">
-              <TagList
-                className={wrapTags ? undefined : "h-full"}
-                bookmark={bookmark}
-                loading={isBookmarkStillTagging(bookmark)}
-              />
-            </div>
-          )}
-        </div>
-        <BottomRow footer={footer} bookmark={bookmark} />
-      </div>
-    </div>
-  );
-}
-
 function SquareGridView({
   bookmark,
   image,
@@ -609,7 +544,6 @@ export function BookmarkLayoutAdaptingCard(props: Props) {
   const layout = useBookmarkLayout();
 
   return bookmarkLayoutSwitch(layout, {
-    masonry: <GridView layout={layout} {...props} />,
     grid: <SquareGridView {...props} />,
     list: <ListView {...props} />,
     compact: <CompactView {...props} />,

@@ -87,7 +87,6 @@ export default function AssetCard({
       bookmark={bookmarkedAsset}
       className={className}
       bookmarkIndex={bookmarkIndex}
-      wrapTags={true}
       image={(_layout, className) => (
         <div className="relative size-full flex-1">
           <AssetImage bookmark={bookmarkedAsset} className={className} />

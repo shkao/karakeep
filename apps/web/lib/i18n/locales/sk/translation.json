@@ -843,7 +843,6 @@
     "semantic_placeholder": "Popíšte, čo si pamätáte…"
   },
   "layouts": {
-    "masonry": "Dlaždice",
     "grid": "Mriežka",
     "list": "Zoznam",
     "compact": "Kompaktné"

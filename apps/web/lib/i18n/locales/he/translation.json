@@ -46,7 +46,6 @@
     "storage": "אחסון"
   },
   "layouts": {
-    "masonry": "פסיפס",
     "grid": "רשת",
     "list": "רשימה",
     "compact": "דחוס"

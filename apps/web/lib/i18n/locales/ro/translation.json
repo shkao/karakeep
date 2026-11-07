@@ -46,7 +46,6 @@
     "storage": "Stocare"
   },
   "layouts": {
-    "masonry": "Carduri",
     "grid": "Grilă",
     "list": "Listă",
     "compact": "Compact"

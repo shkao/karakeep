@@ -1078,7 +1078,6 @@
     "attached_by_ai": "{{count}} MI által"
   },
   "layouts": {
-    "masonry": "Falazat",
     "grid": "Rács",
     "list": "Lista",
     "compact": "Kompakt"
