@@ -40,6 +40,7 @@ import {
 import { READER_FONT_FAMILIES } from "@karakeep/shared/types/readers";
 
 import { contentRendererRegistry } from "./content-renderers";
+import { defaultLinkSection } from "./defaultLinkSection";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
 import ReaderView from "./ReaderView";
 import SavedPageOverview from "./SavedPageOverview";
@@ -125,17 +126,15 @@ export default function LinkContentSection({
   const { t } = useTranslation();
   const { settings } = useReaderSettings();
   const availableRenderers = contentRendererRegistry.getRenderers(bookmark);
-  let defaultSection = availableRenderers[0]?.id ?? "cached";
-  if (
-    availableRenderers.length === 0 &&
+  const defaultSection =
     bookmark.content.type === BookmarkTypes.LINK
-  ) {
-    if (bookmark.content.preferredPreview === "screenshot") {
-      defaultSection = "screenshot";
-    } else if (bookmark.content.preferredPreview === "overview") {
-      defaultSection = "overview";
-    }
-  }
+      ? defaultLinkSection(
+          bookmark.content.url,
+          bookmark.content.readerViewStatus,
+          availableRenderers[0]?.id,
+          bookmark.content.preferredPreview,
+        )
+      : "cached";
   const [section, setSection] = useQueryState("section", {
     defaultValue: defaultSection,
   });
