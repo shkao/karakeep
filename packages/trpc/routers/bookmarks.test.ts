@@ -1415,6 +1415,31 @@ describe("Bookmark Routes", () => {
       );
     });
 
+    test<CustomTestContext>("changing the URL discards the article", async (context) => {
+      const api = context.apiCallers[0].bookmarks;
+      const bookmark = await createVideoBookmark(context, { withVideo: true });
+      await context.db.insert(bookmarkVideoArticles).values({
+        id: bookmark.id,
+        status: "success",
+        content: "# Old video",
+      });
+
+      await api.updateBookmark({ bookmarkId: bookmark.id, title: "Renamed" });
+      expect(
+        await api.getVideoArticle({ bookmarkId: bookmark.id }),
+      ).toMatchObject({ status: "success" });
+
+      await api.updateBookmark({
+        bookmarkId: bookmark.id,
+        url: "https://www.instagram.com/reel/other/",
+      });
+      expect(
+        await context.db.query.bookmarkVideoArticles.findFirst({
+          where: eq(bookmarkVideoArticles.id, bookmark.id),
+        }),
+      ).toBeUndefined();
+    });
+
     test<CustomTestContext>("only the owner can regenerate", async (context) => {
       const bookmark = await createVideoBookmark(context, { withVideo: true });
 

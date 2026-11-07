@@ -74,6 +74,66 @@ export class VideoWorker {
   }
 }
 
+/** Hides values that may hold secrets, such as cookies or proxy credentials. */
+export function redactYtDlpArguments(args: string[]) {
+  const secretFlags = new Set([
+    "--proxy",
+    "--cookies",
+    "--cookies-from-browser",
+    "--add-header",
+    "--username",
+    "--password",
+    "--video-password",
+  ]);
+  return args.map((arg, i) =>
+    i > 0 && secretFlags.has(args[i - 1]) ? "[redacted]" : arg,
+  );
+}
+
+const CONTENT_TYPES_BY_FORMAT: [string, string][] = [
+  ["webm", ASSET_TYPES.VIDEO_WEBM],
+  ["matroska", ASSET_TYPES.VIDEO_MKV],
+  ["mp4", ASSET_TYPES.VIDEO_MP4],
+  ["mov", ASSET_TYPES.VIDEO_MP4],
+];
+
+/**
+ * Maps ffprobe's format name (for example "mov,mp4,m4a,3gp,3g2,mj2" or
+ * "matroska,webm") to a video content type. Checks the file extension first,
+ * because ffprobe reports WebM and Matroska with the same name.
+ */
+export function videoContentType(formatName: string, filePath: string) {
+  const ext = path.extname(filePath).slice(1).toLowerCase();
+  if (ext === "webm") return ASSET_TYPES.VIDEO_WEBM;
+  if (ext === "mkv") return ASSET_TYPES.VIDEO_MKV;
+  const formats = formatName.split(",");
+  return (
+    CONTENT_TYPES_BY_FORMAT.find(([name]) => formats.includes(name))?.[1] ??
+    ASSET_TYPES.VIDEO_MP4
+  );
+}
+
+async function probeContentType(filePath: string, signal: AbortSignal) {
+  try {
+    const { stdout } = await execa(
+      "ffprobe",
+      [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=format_name",
+        "-of",
+        "csv=p=0",
+        filePath,
+      ],
+      { cancelSignal: signal },
+    );
+    return videoContentType(stdout.trim(), filePath);
+  } catch {
+    return videoContentType("", filePath);
+  }
+}
+
 export function prepareYtDlpArguments(
   url: string,
   proxy: string | undefined,
@@ -87,9 +147,10 @@ export function prepareYtDlpArguments(
     const maxSize = `${serverConfig.crawler.maxVideoDownloadSize}M`;
     // Some sites, such as Instagram, don't report format sizes. `<?` keeps
     // those formats, and --max-filesize stops a download that turns out larger.
+    // When no combined format qualifies, fall back to any format with audio.
     ytDlpArguments.push(
       "-f",
-      `best[filesize<?${maxSize}]`,
+      `best[filesize<?${maxSize}]/best*[acodec!=none][filesize<?${maxSize}]`,
       "--max-filesize",
       maxSize,
     );
@@ -98,6 +159,9 @@ export function prepareYtDlpArguments(
   ytDlpArguments.push(...serverConfig.crawler.ytDlpArguments);
   ytDlpArguments.push("-o", assetPath);
   ytDlpArguments.push("--no-playlist");
+  // Print the final file path, so sidecar files such as .info.json are never
+  // mistaken for the video.
+  ytDlpArguments.push("--no-simulate", "--print", "after_move:filepath");
   if (proxy) {
     ytDlpArguments.push("--proxy", proxy);
   }
@@ -156,16 +220,16 @@ async function runWorker(job: DequeuedJob<ZVideoRequest>) {
 
   try {
     logger.info(
-      `[VideoCrawler][${jobId}] Attempting to download a file from "${normalizedUrl}" to "${assetPath}" using the following arguments: "${ytDlpArguments}"`,
+      `[VideoCrawler][${jobId}] Attempting to download a file from "${normalizedUrl}" to "${assetPath}" using the following arguments: "${redactYtDlpArguments(ytDlpArguments)}"`,
     );
 
-    await execa("yt-dlp", ytDlpArguments, {
+    const { stdout } = await execa("yt-dlp", ytDlpArguments, {
       cancelSignal: job.abortSignal,
     });
-    const downloadPath = await findAssetFile(videoAssetId);
-    if (!downloadPath) {
+    const downloadPath = stdout.trim().split("\n").at(-1);
+    if (!downloadPath || !fs.existsSync(downloadPath)) {
       logger.info(
-        "[VideoCrawler][${jobId}] yt-dlp didn't download anything. Skipping ...",
+        `[VideoCrawler][${jobId}] yt-dlp didn't download anything. Skipping ...`,
       );
       return;
     }
@@ -188,7 +252,8 @@ async function runWorker(job: DequeuedJob<ZVideoRequest>) {
       logger.error(genericError);
     }
     await deleteLeftOverAssetFile(jobId, videoAssetId);
-    return;
+    // Throw so the queue retries transient failures, such as rate limits.
+    throw err;
   }
 
   logger.info(
@@ -198,6 +263,7 @@ async function runWorker(job: DequeuedJob<ZVideoRequest>) {
   // Get file size and check quota before saving
   const stats = await fs.promises.stat(assetPath);
   const fileSize = stats.size;
+  const contentType = await probeContentType(assetPath, job.abortSignal);
 
   try {
     const quotaApproved = await QuotaService.checkStorageQuota(
@@ -210,7 +276,7 @@ async function runWorker(job: DequeuedJob<ZVideoRequest>) {
       userId,
       assetId: videoAssetId,
       assetPath,
-      metadata: { contentType: ASSET_TYPES.VIDEO_MP4 },
+      metadata: { contentType },
       quotaApproved,
     });
 
@@ -222,13 +288,14 @@ async function runWorker(job: DequeuedJob<ZVideoRequest>) {
           bookmarkId,
           userId,
           assetType: AssetTypes.LINK_VIDEO,
-          contentType: ASSET_TYPES.VIDEO_MP4,
+          contentType,
           size: fileSize,
         },
         txn,
       );
     });
     await silentDeleteAsset(userId, oldVideoAssetId);
+    await deleteLeftOverAssetFile(jobId, videoAssetId);
 
     logger.info(
       `[VideoCrawler][${jobId}] Finished downloading video from "${normalizedUrl}" and adding it to the database`,
@@ -252,7 +319,8 @@ async function runWorker(job: DequeuedJob<ZVideoRequest>) {
 }
 
 /**
- * Deletes leftover assets in case the download fails
+ * Deletes the files yt-dlp left behind for an asset: partial downloads after a
+ * failure, or sidecars such as .info.json after a success.
  *
  * @param jobId the id of the job
  * @param assetId the id of the asset to delete
@@ -261,40 +329,23 @@ async function deleteLeftOverAssetFile(
   jobId: string,
   assetId: string,
 ): Promise<void> {
-  let assetFile;
+  let files: string[];
   try {
-    assetFile = await findAssetFile(assetId);
+    files = await fs.promises.readdir(TMP_FOLDER);
   } catch {
-    // ignore exception, no asset file was found
     return;
   }
-  if (!assetFile) {
-    return;
-  }
-  logger.info(
-    `[VideoCrawler][${jobId}] Deleting leftover video asset "${assetFile}".`,
-  );
-  try {
-    await fs.promises.rm(assetFile);
-  } catch {
-    logger.error(
-      `[VideoCrawler][${jobId}] Failed deleting leftover video asset "${assetFile}".`,
+  for (const file of files.filter((f) => f.startsWith(assetId))) {
+    const assetFile = path.join(TMP_FOLDER, file);
+    logger.info(
+      `[VideoCrawler][${jobId}] Deleting leftover video file "${assetFile}".`,
     );
-  }
-}
-
-/**
- * yt-dlp automatically adds a file ending to the passed in filename --> we have to search it again in the folder
- *
- * @param assetId the id of the asset to search
- * @returns the path to the downloaded asset
- */
-async function findAssetFile(assetId: string): Promise<string | null> {
-  const files = await fs.promises.readdir(TMP_FOLDER);
-  for (const file of files) {
-    if (file.startsWith(assetId)) {
-      return path.join(TMP_FOLDER, file);
+    try {
+      await fs.promises.rm(assetFile);
+    } catch {
+      logger.error(
+        `[VideoCrawler][${jobId}] Failed deleting leftover video file "${assetFile}".`,
+      );
     }
   }
-  return null;
 }
