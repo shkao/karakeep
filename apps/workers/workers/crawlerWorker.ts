@@ -1110,10 +1110,19 @@ export const crawlAndParseUrl = traced(
         let downloadedBytes = 0;
         let attemptedImages = 0;
         const maxBytes = serverConfig.maxAssetSizeMb * 1024 * 1024;
+        // Leave most of the job timeout for storing the rest of the capture;
+        // images left when the budget runs out keep their remote URLs.
+        const imageBudget = AbortSignal.timeout(
+          Math.min(30_000, (serverConfig.crawler.jobTimeoutSec * 1000) / 4),
+        );
         readableContent.content = await captureArticleImages(
           readableContent.content,
           async (imageUrl) => {
-            if (attemptedImages >= 100 || downloadedBytes >= maxBytes) {
+            if (
+              attemptedImages >= 100 ||
+              downloadedBytes >= maxBytes ||
+              imageBudget.aborted
+            ) {
               return reusePreviousImage(imageUrl);
             }
             attemptedImages++;
@@ -1122,6 +1131,7 @@ export const crawlAndParseUrl = traced(
                 ...ctx,
                 abortSignal: AbortSignal.any([
                   abortSignal,
+                  imageBudget,
                   AbortSignal.timeout(10_000),
                 ]),
               };
@@ -1188,8 +1198,13 @@ export const crawlAndParseUrl = traced(
               return previousId;
             }
           },
+          4,
         );
-        if (attemptedImages >= 100 || downloadedBytes >= maxBytes) {
+        if (
+          attemptedImages >= 100 ||
+          downloadedBytes >= maxBytes ||
+          imageBudget.aborted
+        ) {
           log.warn(
             "Article image capture reached its page limit; remaining images use remote URLs.",
           );
