@@ -95,11 +95,42 @@ export function getSourceUrl(bookmark: ZBookmark) {
   return null;
 }
 
+const INSTAGRAM_TITLE = /^.+? on Instagram: ["“]([\s\S]*?)["”]?$/;
+const TRAILING_HASHTAGS = /(\s+#[\p{L}\p{N}_]+)+\s*$/u;
+const ONLY_HASHTAGS = /^#[\p{L}\p{N}_]+$/u;
+
+/**
+ * Instagram page titles read `Name on Instagram: “caption”`. Returns just the
+ * caption, without trailing hashtags, or the title unchanged if it doesn't
+ * match that pattern.
+ */
+export function cleanInstagramTitle(title: string) {
+  const caption = INSTAGRAM_TITLE.exec(title)?.[1].trim();
+  if (!caption) {
+    return title;
+  }
+  const withoutHashtags = caption.replace(TRAILING_HASHTAGS, "").trim();
+  // A caption of only hashtags keeps them all.
+  return ONLY_HASHTAGS.test(withoutHashtags) ? caption : withoutHashtags;
+}
+
+function isInstagramUrl(url: string) {
+  try {
+    const host = new URL(url).hostname;
+    return host === "instagram.com" || host.endsWith(".instagram.com");
+  } catch {
+    return false;
+  }
+}
+
 export function getBookmarkTitle(bookmark: ZBookmark) {
   let title: string | null = null;
   switch (bookmark.content.type) {
     case BookmarkTypes.LINK:
       title = bookmark.content.title ?? bookmark.content.url;
+      if (bookmark.content.title && isInstagramUrl(bookmark.content.url)) {
+        title = cleanInstagramTitle(bookmark.content.title);
+      }
       break;
     case BookmarkTypes.TEXT:
       title = null;

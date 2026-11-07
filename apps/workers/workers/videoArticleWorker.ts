@@ -7,11 +7,7 @@ import { execa } from "execa";
 import { z } from "zod";
 
 import { db } from "@karakeep/db";
-import {
-  bookmarkLinks,
-  bookmarkVideoArticles,
-  users,
-} from "@karakeep/db/schema";
+import { bookmarkVideoArticles, users } from "@karakeep/db/schema";
 import {
   addLogFields,
   createAssetReadStream,
@@ -298,14 +294,6 @@ async function runWorker(job: DequeuedJob<ZVideoArticleRequest>) {
         error: null,
       })
       .where(eq(bookmarkVideoArticles.id, bookmarkId));
-    if (title) {
-      // The generated title replaces the crawled one, which for short videos is
-      // usually generic. A title the user set on the bookmark still wins.
-      await db
-        .update(bookmarkLinks)
-        .set({ title })
-        .where(eq(bookmarkLinks.id, bookmarkId));
-    }
     logger.info(
       `[VideoArticle][${jobId}] Wrote a ${content.length}-character article from a ${transcript.length}-character transcript.`,
     );
