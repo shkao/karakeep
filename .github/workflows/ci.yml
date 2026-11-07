@@ -76,6 +76,56 @@ jobs:
       - uses: actions/checkout@v4.3.1
         with:
           persist-credentials: false
+
+      - name: Setup
+        uses: $/tooling/github/setup
+
+      - name: Shared Package Tests
+        working-directory: packages/shared
+        run: pnpm test
+
+      - name: TRPC Tests
+        working-directory: packages/trpc
+        run: pnpm test
+
+      - name: Workers Tests
+        working-directory: apps/workers
+        run: pnpm test
+
+      - name: Web Tests
+        working-directory: apps/web
+        run: pnpm test
+
+      - name: API Tests
+        working-directory: packages/api
+        run: pnpm test
+
+      - name: Shared Server Tests
+        working-directory: packages/shared-server
+        run: pnpm test
+
+      - name: MCP Tests
+        working-directory: apps/mcp
+        run: pnpm test
+
+      - name: Mobile Tests
+        working-directory: apps/mobile
+        run: pnpm test
+
+      # - name: Plugins Tests
+      #   working-directory: packages/plugins
+      #   run: pnpm test
+
+  # E2E takes most of CI's time, so it runs after merging and on demand
+  # instead of gating every PR.
+  e2e:
+    if: github.event_name != 'pull_request'
+    # Playwright 1.59 can't install Chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.3.1
+        with:
+          persist-credentials: false
           # For pull requests, HEAD is a merge commit whose first parent is the
           # base, which is used to tell whether docker/chrome changed.
           fetch-depth: 2
@@ -146,56 +196,6 @@ jobs:
             echo "Building $KARAKEEP_CHROME_IMAGE"
             docker compose build chrome
           fi
-
-      - name: Setup
-        uses: $/tooling/github/setup
-
-      - name: Shared Package Tests
-        working-directory: packages/shared
-        run: pnpm test
-
-      - name: TRPC Tests
-        working-directory: packages/trpc
-        run: pnpm test
-
-      - name: Workers Tests
-        working-directory: apps/workers
-        run: pnpm test
-
-      - name: Web Tests
-        working-directory: apps/web
-        run: pnpm test
-
-      - name: API Tests
-        working-directory: packages/api
-        run: pnpm test
-
-      - name: Shared Server Tests
-        working-directory: packages/shared-server
-        run: pnpm test
-
-      - name: MCP Tests
-        working-directory: apps/mcp
-        run: pnpm test
-
-      - name: Mobile Tests
-        working-directory: apps/mobile
-        run: pnpm test
-
-      # - name: Plugins Tests
-      #   working-directory: packages/plugins
-      #   run: pnpm test
-
-  # E2E takes most of CI's time, so it runs after merging and on demand
-  # instead of gating every PR.
-  e2e:
-    if: github.event_name != 'pull_request'
-    # Playwright 1.59 can't install Chromium on ubuntu-latest (26.04).
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4.3.1
-        with:
-          persist-credentials: false
 
       - name: Setup
         uses: $/tooling/github/setup
