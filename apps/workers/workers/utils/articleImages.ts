@@ -22,18 +22,39 @@ export function getCapturedArticleImageSources(
 export async function captureArticleImages(
   html: string,
   saveImage: (url: string) => Promise<string | null>,
+  concurrency = 1,
 ): Promise<string> {
   const $ = load(html, null, false);
   const savedImages = new Map<string, string | null>();
+  // Embedded images are already self-contained. Unsupported protocols stay
+  // untouched and are never passed to the downloader.
+  const sources = [
+    ...new Set(
+      $("img")
+        .toArray()
+        .map((image) => $(image).attr("src"))
+        .filter((src): src is string => !!src && /^https?:\/\//i.test(src)),
+    ),
+  ];
+  let next = 0;
+  // Wait for every worker before failing so no save finishes after the caller
+  // has cleaned up.
+  const results = await Promise.allSettled(
+    Array.from({ length: Math.min(concurrency, sources.length) }, async () => {
+      while (next < sources.length) {
+        const src = sources[next++];
+        savedImages.set(src, await saveImage(src));
+      }
+    }),
+  );
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) {
+    throw failure.reason;
+  }
   for (const image of $("img").toArray()) {
     const src = $(image).attr("src");
-    // Embedded images are already self-contained. Unsupported protocols stay
-    // untouched and are never passed to the downloader.
-    if (!src || !/^https?:\/\//i.test(src)) {
+    if (!src) {
       continue;
-    }
-    if (!savedImages.has(src)) {
-      savedImages.set(src, await saveImage(src));
     }
     const assetId = savedImages.get(src);
     if (assetId) {

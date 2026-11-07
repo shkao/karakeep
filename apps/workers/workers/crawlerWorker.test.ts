@@ -194,8 +194,11 @@ test("counts bytes from oversized responses against the page budget", async () =
     configurable: true,
   });
   try {
-    state.html =
-      '<img src="https://example.com/first.png"><img src="https://example.com/second.png">';
+    // Four downloads run at once; none may start after they blow the budget.
+    state.html = Array.from(
+      { length: 6 },
+      (_, i) => `<img src="https://example.com/image-${i}.png">`,
+    ).join("");
     vi.mocked(fetchWithProxy).mockImplementation(
       async () =>
         new Response(Buffer.alloc(2), {
@@ -203,8 +206,58 @@ test("counts bytes from oversized responses against the page budget", async () =
         }),
     );
     await capture();
-    expect(fetchWithProxy).toHaveBeenCalledTimes(1);
+    expect(fetchWithProxy).toHaveBeenCalledTimes(4);
   } finally {
     Object.defineProperty(serverConfig, "maxAssetSizeMb", previousLimit);
   }
+});
+
+test("keeps remote URLs for images left when the capture budget runs out", async () => {
+  const crawlerConfig = serverConfig.crawler;
+  const previousTimeout = Object.getOwnPropertyDescriptor(
+    crawlerConfig,
+    "jobTimeoutSec",
+  )!;
+  Object.defineProperty(crawlerConfig, "jobTimeoutSec", {
+    value: 0.4,
+    configurable: true,
+  });
+  try {
+    state.html = Array.from(
+      { length: 8 },
+      (_, i) => `<img src="https://example.com/slow-${i}.png">`,
+    ).join("");
+    vi.mocked(fetchWithProxy).mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          const signal = init?.signal as AbortSignal;
+          signal.addEventListener("abort", () => reject(signal.reason));
+        }),
+    );
+    const started = Date.now();
+    await capture();
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(fetchWithProxy).toHaveBeenCalledTimes(4);
+    const link = await db.query.bookmarkLinks.findFirst();
+    expect(link?.htmlContent).toContain("https://example.com/slow-7.png");
+    expect(await db.query.assets.findMany()).toHaveLength(0);
+  } finally {
+    Object.defineProperty(crawlerConfig, "jobTimeoutSec", previousTimeout);
+  }
+});
+
+test("aborts image capture when the job is aborted", async () => {
+  const abort = controller();
+  vi.mocked(fetchWithProxy).mockImplementation(
+    (_url, init) =>
+      new Promise((_resolve, reject) => {
+        const signal = init?.signal as AbortSignal;
+        signal.addEventListener("abort", () => reject(signal.reason));
+        abort.abort(new Error("job timed out"));
+      }),
+  );
+  await expect(capture(abort)).rejects.toThrow("job timed out");
+  expect(await db.query.bookmarkLinks.findFirst()).toMatchObject({
+    crawledAt: null,
+  });
 });
