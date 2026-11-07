@@ -1048,6 +1048,8 @@
   },
   "preview": {
     "view_original": "Vezi originalul",
+    "open_original": "Deschide originalul",
+    "reading_time": "{{count}} min de citit",
     "cached_content": "Conținut stocat în cache",
     "reader_view": "Vizualizare cititor",
     "page_overview": "Prezentare generală a paginii",
@@ -1063,6 +1065,22 @@
     "tabs": {
       "content": "Conținut",
       "details": "Detalii"
+    },
+    "video_article": {
+      "title": "Articol",
+      "generated_badge": "Generat din videoclip",
+      "generated_tooltip": "Scris de AI pe baza vorbirii din videoclip și a descrierii autorului. Verifică detaliile importante în videoclip.",
+      "waiting_for_video": "Se așteaptă descărcarea videoclipului…",
+      "generating": "Videoclipul este transformat într-un articol. De obicei durează mai puțin de un minut.",
+      "failed_title": "Nu s-a putut scrie un articol pentru acest videoclip",
+      "not_generated": "Încă nu există un articol pentru acest videoclip.",
+      "write_article": "Scrie articolul",
+      "regenerate": "Regenerează",
+      "watch_video": "Vezi videoclipul",
+      "original_caption": "Descrierea originală",
+      "transcript": "Transcriere completă",
+      "no_speech": "Acest videoclip nu conține vorbire, așa că articolul se bazează doar pe descriere.",
+      "open_original": "Deschide originalul"
     }
   },
   "editor": {

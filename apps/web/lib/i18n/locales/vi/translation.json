@@ -1123,6 +1123,8 @@
   },
   "preview": {
     "view_original": "Xem bản gốc",
+    "open_original": "Mở bản gốc",
+    "reading_time": "{{count}} phút đọc",
     "cached_content": "Nội dung được lưu trong bộ nhớ cache",
     "reader_view": "Chế độ đọc",
     "page_overview": "Tổng quan trang",
@@ -1131,6 +1133,22 @@
     "tabs": {
       "content": "Nội dung",
       "details": "Chi tiết"
+    },
+    "video_article": {
+      "title": "Bài viết",
+      "generated_badge": "Tạo từ video",
+      "generated_tooltip": "Do AI viết dựa trên lời nói trong video và chú thích của người tạo. Hãy kiểm tra các chi tiết quan trọng trong video.",
+      "waiting_for_video": "Đang chờ tải video xuống…",
+      "generating": "Đang chuyển video này thành bài viết. Thường mất chưa đến một phút.",
+      "failed_title": "Không thể viết bài cho video này",
+      "not_generated": "Video này chưa có bài viết.",
+      "write_article": "Viết bài",
+      "regenerate": "Tạo lại",
+      "watch_video": "Xem video",
+      "original_caption": "Chú thích gốc",
+      "transcript": "Bản chép lời đầy đủ",
+      "no_speech": "Video này không có lời nói, nên bài viết chỉ dựa trên chú thích.",
+      "open_original": "Mở bản gốc"
     },
     "archive_info": "Các bản lưu trữ có thể không hiển thị chính xác nội dòng nếu chúng yêu cầu Javascript. Để có kết quả tốt nhất, <1>hãy tải xuống và mở trong trình duyệt của bạn</1>.",
     "fetch_error_title": "Không thể tìm thấy nội dung",

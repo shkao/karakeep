@@ -203,6 +203,8 @@
   },
   "preview": {
     "view_original": "원본 보기",
+    "open_original": "원본 열기",
+    "reading_time": "{{count}}분 분량",
     "cached_content": "캐싱된 컨텐츠",
     "reader_view": "리더 보기",
     "page_overview": "페이지 개요",
@@ -211,6 +213,22 @@
     "tabs": {
       "content": "콘텐츠",
       "details": "세부 정보"
+    },
+    "video_article": {
+      "title": "글",
+      "generated_badge": "동영상에서 생성됨",
+      "generated_tooltip": "동영상의 음성과 제작자의 캡션을 바탕으로 AI가 작성했습니다. 중요한 내용은 동영상에서 확인하세요.",
+      "waiting_for_video": "동영상 다운로드를 기다리는 중…",
+      "generating": "이 동영상을 글로 바꾸는 중입니다. 보통 1분 이내에 끝납니다.",
+      "failed_title": "이 동영상의 글을 작성하지 못했습니다",
+      "not_generated": "이 동영상에 대한 글이 아직 없습니다.",
+      "write_article": "글 작성",
+      "regenerate": "다시 생성",
+      "watch_video": "동영상 보기",
+      "original_caption": "원본 캡션",
+      "transcript": "전체 스크립트",
+      "no_speech": "이 동영상에는 음성이 없어 캡션만으로 글을 작성했습니다.",
+      "open_original": "원본 열기"
     },
     "archive_info": "보관 파일은 Javascript가 필요한 경우 인라인으로 올바르게 렌더링되지 않을 수 있습니다. 최상의 결과를 얻으려면 <1>다운로드하여 브라우저에서 여세요</1>.",
     "fetch_error_title": "콘텐츠를 사용할 수 없음",

@@ -965,6 +965,8 @@
   },
   "preview": {
     "view_original": "Orijinali Görüntüle",
+    "open_original": "Orijinali aç",
+    "reading_time": "{{count}} dk okuma",
     "cached_content": "Önbelleğe Alınmış İçerik",
     "reader_view": "Okuyucu Görünümü",
     "page_overview": "Sayfaya Genel Bakış",
@@ -973,6 +975,22 @@
     "tabs": {
       "content": "İçerik",
       "details": "Ayrıntılar"
+    },
+    "video_article": {
+      "title": "Makale",
+      "generated_badge": "Videodan oluşturuldu",
+      "generated_tooltip": "Yapay zekâ tarafından videodaki konuşma ve içerik üreticisinin açıklamasından yazıldı. Önemli ayrıntıları videodan doğrulayın.",
+      "waiting_for_video": "Videonun indirilmesi bekleniyor…",
+      "generating": "Bu video makaleye dönüştürülüyor. Bu genellikle bir dakikadan kısa sürer.",
+      "failed_title": "Bu video için makale yazılamadı",
+      "not_generated": "Bu video için henüz makale yok.",
+      "write_article": "Makale yaz",
+      "regenerate": "Yeniden oluştur",
+      "watch_video": "Videoyu izle",
+      "original_caption": "Orijinal açıklama",
+      "transcript": "Tam döküm",
+      "no_speech": "Bu videoda konuşma yok, bu yüzden makale yalnızca açıklamaya dayanıyor.",
+      "open_original": "Orijinali aç"
     },
     "archive_info": "Arşivler Javascript gerektiriyorsa satır içi olarak doğru şekilde işlenmeyebilir. En iyi sonuçlar için, <1>indirin ve tarayıcınızda açın</1>.",
     "fetch_error_title": "İçerik Kullanılamıyor",

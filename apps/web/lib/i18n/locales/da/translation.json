@@ -1020,6 +1020,8 @@
   },
   "preview": {
     "view_original": "Se original",
+    "open_original": "Åbn original",
+    "reading_time": "{{count}} min. læsetid",
     "cached_content": "Cachelagret indhold",
     "reader_view": "Læsevisning",
     "page_overview": "Sideoversigt",
@@ -1028,6 +1030,22 @@
     "tabs": {
       "content": "Indhold",
       "details": "Detaljer"
+    },
+    "video_article": {
+      "title": "Artikel",
+      "generated_badge": "Genereret fra video",
+      "generated_tooltip": "Skrevet af AI ud fra talen i videoen og skaberens billedtekst. Tjek vigtige detaljer i videoen.",
+      "waiting_for_video": "Venter på, at videoen bliver downloadet…",
+      "generating": "Videoen bliver lavet om til en artikel. Det tager som regel under et minut.",
+      "failed_title": "Kunne ikke skrive en artikel til denne video",
+      "not_generated": "Der er endnu ingen artikel til denne video.",
+      "write_article": "Skriv artikel",
+      "regenerate": "Generér igen",
+      "watch_video": "Se videoen",
+      "original_caption": "Original billedtekst",
+      "transcript": "Fuld transskription",
+      "no_speech": "Denne video har ingen tale, så artiklen bygger kun på billedteksten.",
+      "open_original": "Åbn originalen"
     },
     "archive_info": "Arkiver gengives muligvis ikke korrekt inline, hvis de kræver Javascript. For at opnå de bedste resultater skal du <1>downloade den og åbne den i din browser</1>.",
     "fetch_error_title": "Indhold utilgængeligt",

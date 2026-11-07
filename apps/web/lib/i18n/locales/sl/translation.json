@@ -1138,6 +1138,8 @@
   },
   "preview": {
     "view_original": "Ogled izvirnika",
+    "open_original": "Odpri izvirnik",
+    "reading_time": "{{count}} min branja",
     "cached_content": "Predpomnjena vsebina",
     "reader_view": "Pogled bralnika",
     "page_overview": "Pregled strani",
@@ -1146,6 +1148,22 @@
     "tabs": {
       "content": "Vsebina",
       "details": "Podrobnosti"
+    },
+    "video_article": {
+      "title": "Članek",
+      "generated_badge": "Ustvarjeno iz videa",
+      "generated_tooltip": "Napisala umetna inteligenca na podlagi govora v videu in opisa avtorja. Pomembne podrobnosti preverite v videu.",
+      "waiting_for_video": "Čakanje na prenos videa…",
+      "generating": "Video se pretvarja v članek. Običajno traja manj kot minuto.",
+      "failed_title": "Za ta video ni bilo mogoče napisati članka",
+      "not_generated": "Za ta video še ni članka.",
+      "write_article": "Napiši članek",
+      "regenerate": "Ustvari znova",
+      "watch_video": "Oglej si video",
+      "original_caption": "Izvirni opis",
+      "transcript": "Celoten prepis",
+      "no_speech": "Ta video nima govora, zato članek temelji samo na opisu.",
+      "open_original": "Odpri izvirnik"
     },
     "archive_info": "Arhivi se morda ne bodo pravilno izrisali v vrstici, če zahtevajo Javascript. Za najboljše rezultate <1>jih prenesi in odpri v brskalniku</1>.",
     "fetch_error_title": "Vsebina ni na voljo",

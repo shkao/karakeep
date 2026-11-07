@@ -1067,6 +1067,8 @@
   },
   "preview": {
     "view_original": "Zobacz oryginał",
+    "open_original": "Otwórz oryginał",
+    "reading_time": "{{count}} min czytania",
     "cached_content": "Zbuforowana zawartość",
     "reader_view": "Widok czytnika",
     "page_overview": "Przegląd strony",
@@ -1075,6 +1077,22 @@
     "tabs": {
       "content": "Treść",
       "details": "Szczegóły"
+    },
+    "video_article": {
+      "title": "Artykuł",
+      "generated_badge": "Wygenerowano z wideo",
+      "generated_tooltip": "Napisane przez AI na podstawie mowy z wideo i opisu twórcy. Sprawdź ważne szczegóły w wideo.",
+      "waiting_for_video": "Oczekiwanie na pobranie wideo…",
+      "generating": "Zamieniam to wideo w artykuł. Zwykle trwa to mniej niż minutę.",
+      "failed_title": "Nie udało się napisać artykułu dla tego wideo",
+      "not_generated": "Dla tego wideo nie ma jeszcze artykułu.",
+      "write_article": "Napisz artykuł",
+      "regenerate": "Wygeneruj ponownie",
+      "watch_video": "Obejrzyj wideo",
+      "original_caption": "Oryginalny opis",
+      "transcript": "Pełna transkrypcja",
+      "no_speech": "To wideo nie zawiera mowy, więc artykuł opiera się wyłącznie na opisie.",
+      "open_original": "Otwórz oryginał"
     },
     "archive_info": "Archiwa mogą się nie wyświetlać poprawnie w wierszu, jeśli wymagają Javascript. Dla najlepszych rezultatów, <1>pobierz i otwórz w przeglądarce</1>.",
     "fetch_error_title": "Zawartość niedostępna",

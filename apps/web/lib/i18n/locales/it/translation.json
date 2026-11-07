@@ -1027,6 +1027,8 @@
   },
   "preview": {
     "view_original": "Vedi originale",
+    "open_original": "Apri originale",
+    "reading_time": "{{count}} min di lettura",
     "cached_content": "Contenuto salvato in cache",
     "reader_view": "Visualizzazione Reader",
     "page_overview": "Panoramica della pagina",
@@ -1035,6 +1037,22 @@
     "tabs": {
       "content": "Contenuto",
       "details": "Dettagli"
+    },
+    "video_article": {
+      "title": "Articolo",
+      "generated_badge": "Generato dal video",
+      "generated_tooltip": "Scritto dall'IA a partire dal parlato del video e dalla didascalia dell'autore. Verifica i dettagli importanti nel video.",
+      "waiting_for_video": "In attesa del download del video…",
+      "generating": "Trasformazione del video in articolo. Di solito richiede meno di un minuto.",
+      "failed_title": "Impossibile scrivere un articolo per questo video",
+      "not_generated": "Non c'è ancora un articolo per questo video.",
+      "write_article": "Scrivi articolo",
+      "regenerate": "Rigenera",
+      "watch_video": "Guarda il video",
+      "original_caption": "Didascalia originale",
+      "transcript": "Trascrizione completa",
+      "no_speech": "Questo video non contiene parlato, quindi l'articolo si basa solo sulla didascalia.",
+      "open_original": "Apri l'originale"
     },
     "archive_info": "Gli archivi potrebbero non essere visualizzati correttamente in linea se richiedono Javascript. Per risultati ottimali, <1>scaricalo e aprilo nel tuo browser</1>.",
     "fetch_error_title": "Contenuto non disponibile",

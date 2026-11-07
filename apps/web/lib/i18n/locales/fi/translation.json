@@ -1029,6 +1029,8 @@
   },
   "preview": {
     "view_original": "Näytä alkuperäinen",
+    "open_original": "Avaa alkuperäinen",
+    "reading_time": "{{count}} min lukuaika",
     "cached_content": "Välimuistissa oleva sisältö",
     "reader_view": "Lukijanäkymä",
     "page_overview": "Sivun yleiskatsaus",
@@ -1037,6 +1039,22 @@
     "tabs": {
       "content": "Sisältö",
       "details": "Tiedot"
+    },
+    "video_article": {
+      "title": "Artikkeli",
+      "generated_badge": "Luotu videosta",
+      "generated_tooltip": "Tekoälyn kirjoittama videon puheen ja tekijän kuvatekstin pohjalta. Tarkista tärkeät yksityiskohdat videosta.",
+      "waiting_for_video": "Odotetaan videon latautumista…",
+      "generating": "Videosta tehdään artikkelia. Tämä kestää yleensä alle minuutin.",
+      "failed_title": "Tälle videolle ei voitu kirjoittaa artikkelia",
+      "not_generated": "Tälle videolle ei ole vielä artikkelia.",
+      "write_article": "Kirjoita artikkeli",
+      "regenerate": "Luo uudelleen",
+      "watch_video": "Katso video",
+      "original_caption": "Alkuperäinen kuvateksti",
+      "transcript": "Koko litterointi",
+      "no_speech": "Videossa ei ole puhetta, joten artikkeli perustuu vain kuvatekstiin.",
+      "open_original": "Avaa alkuperäinen"
     },
     "archive_info": "Arkistot eivät välttämättä hahmotu oikein, jos ne vaativat Javascriptiä. Parhaan tuloksen saat, kun <1>lataat sen ja avaat sen selaimessasi</1>.",
     "fetch_error_title": "Sisältö ei ole käytettävissä",

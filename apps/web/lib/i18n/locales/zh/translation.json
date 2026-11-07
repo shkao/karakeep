@@ -958,6 +958,8 @@
   },
   "preview": {
     "view_original": "查看原文",
+    "open_original": "打开原始内容",
+    "reading_time": "阅读约需 {{count}} 分钟",
     "cached_content": "缓存内容",
     "reader_view": "阅读器视图",
     "page_overview": "页面概览",
@@ -966,6 +968,22 @@
     "tabs": {
       "content": "内容",
       "details": "详情"
+    },
+    "video_article": {
+      "title": "文章",
+      "generated_badge": "由视频生成",
+      "generated_tooltip": "由 AI 根据视频中的语音和创作者的说明撰写。重要细节请对照视频核实。",
+      "waiting_for_video": "正在等待视频下载…",
+      "generating": "正在将此视频转换为文章，通常不到一分钟即可完成。",
+      "failed_title": "无法为此视频撰写文章",
+      "not_generated": "此视频还没有文章。",
+      "write_article": "撰写文章",
+      "regenerate": "重新生成",
+      "watch_video": "观看视频",
+      "original_caption": "原始说明",
+      "transcript": "完整转录",
+      "no_speech": "此视频没有语音，因此文章仅根据说明撰写。",
+      "open_original": "打开原始内容"
     },
     "archive_info": "如果存档需要 Javascript，则可能无法正确地以内联方式呈现。为了获得最佳效果，<1>请下载并在浏览器中打开它</1>。",
     "fetch_error_title": "内容不可用",

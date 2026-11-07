@@ -1053,6 +1053,8 @@
   },
   "preview": {
     "view_original": "Visa orginal",
+    "open_original": "Öppna original",
+    "reading_time": "{{count}} min läsning",
     "cached_content": "Cachelagrat innehåll",
     "reader_view": "Läsarvy",
     "page_overview": "Sidöversikt",
@@ -1061,6 +1063,22 @@
     "tabs": {
       "content": "Innehåll",
       "details": "Detaljer"
+    },
+    "video_article": {
+      "title": "Artikel",
+      "generated_badge": "Skapad från video",
+      "generated_tooltip": "Skriven av AI utifrån talet i videon och skaparens bildtext. Kontrollera viktiga detaljer mot videon.",
+      "waiting_for_video": "Väntar på att videon ska laddas ner…",
+      "generating": "Gör om videon till en artikel. Det tar oftast under en minut.",
+      "failed_title": "Kunde inte skriva en artikel för den här videon",
+      "not_generated": "Det finns ingen artikel för den här videon än.",
+      "write_article": "Skriv artikel",
+      "regenerate": "Generera igen",
+      "watch_video": "Titta på videon",
+      "original_caption": "Ursprunglig bildtext",
+      "transcript": "Fullständig transkription",
+      "no_speech": "Videon innehåller inget tal, så artikeln bygger bara på bildtexten.",
+      "open_original": "Öppna originalet"
     },
     "archive_info": "Arkiv kanske inte återges korrekt inbäddade om de kräver Javascript. För bästa resultat, <1>ladda ner den och öppna den i din webbläsare</1>.",
     "fetch_error_title": "Innehållet är inte tillgängligt",

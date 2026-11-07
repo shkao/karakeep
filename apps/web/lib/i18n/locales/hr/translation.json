@@ -972,6 +972,8 @@
   },
   "preview": {
     "view_original": "Pogledaj orginal",
+    "open_original": "Otvori izvornik",
+    "reading_time": "{{count}} min čitanja",
     "cached_content": "Keširani sadržaj",
     "reader_view": "Prikaz čitača",
     "page_overview": "Pregled stranice",
@@ -980,6 +982,22 @@
     "tabs": {
       "content": "Sadržaj",
       "details": "Detalji"
+    },
+    "video_article": {
+      "title": "Članak",
+      "generated_badge": "Generirano iz videozapisa",
+      "generated_tooltip": "Napisao AI na temelju govora u videozapisu i opisa autora. Provjerite važne pojedinosti u videozapisu.",
+      "waiting_for_video": "Čeka se preuzimanje videozapisa…",
+      "generating": "Videozapis se pretvara u članak. To obično traje manje od minute.",
+      "failed_title": "Nije moguće napisati članak za ovaj videozapis",
+      "not_generated": "Za ovaj videozapis još nema članka.",
+      "write_article": "Napiši članak",
+      "regenerate": "Generiraj ponovno",
+      "watch_video": "Pogledaj videozapis",
+      "original_caption": "Izvorni opis",
+      "transcript": "Cijeli prijepis",
+      "no_speech": "Ovaj videozapis nema govora pa se članak temelji samo na opisu.",
+      "open_original": "Otvori izvornik"
     },
     "archive_info": "Arhive se možda neće ispravno prikazati inline ako zahtijevaju Javascript. Za najbolje rezultate, <1>preuzmi ih i otvori u svom pregledniku</1>.",
     "fetch_error_title": "Sadržaj nije dostupan",
