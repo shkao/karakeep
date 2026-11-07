@@ -10,6 +10,7 @@ import {
   bookmarks,
   bookmarkTags,
   bookmarkTexts,
+  bookmarkVideoArticles,
   customPrompts,
   tagsOnBookmarks,
   userReadingProgress,
@@ -28,6 +29,7 @@ import {
   QuotaService,
   SUPPORTED_BOOKMARK_ASSET_TYPES,
   triggerSearchReindex,
+  VideoArticleQueue,
   VideoWorkerQueue,
 } from "@karakeep/shared-server";
 import serverConfig from "@karakeep/shared/config";
@@ -892,6 +894,69 @@ export const bookmarksAppRouter = router({
         },
       );
     }),
+  getVideoArticle: bookmarksProcedure
+    .input(z.object({ bookmarkId: z.string() }))
+    .use(ensureBookmarkAccess)
+    .query(async ({ input, ctx }) => {
+      const article = await ctx.db.query.bookmarkVideoArticles.findFirst({
+        where: eq(bookmarkVideoArticles.id, input.bookmarkId),
+        columns: {
+          status: true,
+          title: true,
+          content: true,
+          caption: true,
+          transcript: true,
+          error: true,
+          modifiedAt: true,
+        },
+      });
+      return article ?? null;
+    }),
+  regenerateVideoArticle: bookmarksProcedure
+    .use(
+      createRateLimitMiddleware({
+        name: "bookmarks.regenerateVideoArticle",
+        windowMs: 30 * 60 * 1000,
+        maxRequests: 50,
+      }),
+    )
+    .input(z.object({ bookmarkId: z.string() }))
+    .use(ensureBookmarkOwnership)
+    .mutation(async ({ input, ctx }) => {
+      if (!serverConfig.videoArticle.enabled) {
+        throw new TRPCError({
+          code: "FORBIDDEN",
+          message: "Video articles are disabled on this server",
+        });
+      }
+      const video = await ctx.db.query.assets.findFirst({
+        where: and(
+          eq(assets.bookmarkId, input.bookmarkId),
+          eq(assets.assetType, AssetTypes.LINK_VIDEO),
+        ),
+        columns: { id: true },
+      });
+      if (!video) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "This bookmark has no downloaded video",
+        });
+      }
+      await ctx.db
+        .insert(bookmarkVideoArticles)
+        .values({ id: input.bookmarkId, status: "pending" })
+        .onConflictDoUpdate({
+          target: bookmarkVideoArticles.id,
+          set: { status: "pending", error: null },
+        });
+      await VideoArticleQueue.enqueue(
+        { bookmarkId: input.bookmarkId },
+        {
+          groupId: ctx.user.id,
+          idempotencyKey: `video-article:${input.bookmarkId}`,
+        },
+      );
+    }),
   updateReadingProgress: bookmarksProcedure
     .input(
       z.object({
@@ -1583,6 +1648,7 @@ export const bookmarksAppRouter = router({
       const content = await Bookmark.getBookmarkPlainTextContent(
         bookmark,
         ctx.user.id,
+        ctx.db,
       );
 
       const bookmarkDetails = `

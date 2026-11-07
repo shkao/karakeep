@@ -37,6 +37,9 @@ export const zClientConfigSchema = z.object({
   crawler: z.object({
     videoDownloadOnDemand: z.boolean(),
   }),
+  videoArticle: z.object({
+    enabled: z.boolean(),
+  }),
   revenueCat: z.object({
     isConfigured: z.boolean(),
     purchasePlatforms: z.array(z.enum(["ios", "android"])),

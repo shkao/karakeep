@@ -19,6 +19,7 @@ const testQueueMocks = vi.hoisted(() => ({
   searchIndexingEnqueue: vi.fn(),
   triggerSearchReindex: vi.fn(),
   videoWorkerEnqueue: vi.fn(),
+  videoArticleEnqueue: vi.fn(),
 }));
 
 export function getTestQueueMocks() {
@@ -172,6 +173,9 @@ export function defaultBeforeEach(seedDB = true) {
         },
         VideoWorkerQueue: {
           enqueue: testQueueMocks.videoWorkerEnqueue,
+        },
+        VideoArticleQueue: {
+          enqueue: testQueueMocks.videoArticleEnqueue,
         },
         triggerSearchReindex: testQueueMocks.triggerSearchReindex,
       };

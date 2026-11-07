@@ -142,6 +142,35 @@ export function buildSummaryPromptUntruncated(
 }
 
 /**
+ * Build the prompt that turns a video's caption and speech transcript into a
+ * self-contained article the reader can learn from without watching.
+ */
+export function buildVideoArticlePrompt(
+  lang: string,
+  sources: { uploader: string | null; caption: string; transcript: string },
+): string {
+  return `You write a self-contained article that teaches what a short video says, so the reader learns everything useful without watching it.
+
+Sources: the creator's caption and the speech transcript below. Use only these. Ignore hashtags, follower counts, comments, calls to follow, like or subscribe, and self-promotion.
+
+Write Markdown in this order:
+1. A "# " title that names the topic (never "Video by ...").
+2. An opening paragraph: what the video is about, who is speaking if the sources say so, and why it matters.
+3. "## " sections, one per main idea. Explain each idea in full sentences with the context needed to understand it on its own. Keep the speaker's examples and reasoning. Prefer explanation over bullet lists.
+4. "## Key takeaways": 3 to 6 bullets, each a complete statement the reader can act on or remember.
+
+Rules: never invent facts, numbers, names or links. If the speaker points at something only shown on screen, say it was shown in the video. Fix an obvious mis-hearing only when the caption gives the right spelling. If the transcript is empty, write the article from the caption alone. Write in ${lang}. Output only the article.
+
+Uploader: ${sources.uploader ?? "unknown"}
+
+Caption:
+${sources.caption || "(none)"}
+
+Transcript:
+${sources.transcript || "(no speech)"}`;
+}
+
+/**
  * Build OCR prompt for extracting text from images using LLM
  */
 export function buildOCRPrompt(): string {

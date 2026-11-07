@@ -154,6 +154,12 @@ const allEnv = z.object({
   CRAWLER_VIDEO_DOWNLOAD_MAX_SIZE: z.coerce.number().default(50),
   CRAWLER_VIDEO_DOWNLOAD_TIMEOUT_SEC: z.coerce.number().default(10 * 60),
   CRAWLER_VIDEO_DOWNLOAD_ON_DEMAND: optionalStringBool(),
+  VIDEO_ARTICLE_ENABLED: stringBool("false"),
+  VIDEO_ARTICLE_MAX_DURATION_SEC: z.coerce.number().default(10 * 60),
+  VIDEO_ARTICLE_TIMEOUT_SEC: z.coerce.number().default(10 * 60),
+  TRANSCRIPTION_BASE_URL: z.string().url().optional(),
+  TRANSCRIPTION_API_KEY: z.string().optional(),
+  TRANSCRIPTION_MODEL: z.string().default("whisper-1"),
   CRAWLER_ENABLE_ADBLOCKER: stringBool("true"),
   CRAWLER_ENABLE_AUTOCONSENT: stringBool("true"),
   CRAWLER_YTDLP_ARGS: z
@@ -437,6 +443,18 @@ const serverConfigSchema = allEnv.transform((val, ctx) => {
       numWorkers: val.EMBEDDING_NUM_WORKERS,
       jobTimeoutSec: val.EMBEDDING_JOB_TIMEOUT_SEC,
     },
+    videoArticle: {
+      // Needs both a transcription endpoint and downloaded videos to run.
+      enabled:
+        val.VIDEO_ARTICLE_ENABLED && val.TRANSCRIPTION_BASE_URL !== undefined,
+      maxDurationSec: val.VIDEO_ARTICLE_MAX_DURATION_SEC,
+      timeoutSec: val.VIDEO_ARTICLE_TIMEOUT_SEC,
+      transcription: {
+        baseUrl: val.TRANSCRIPTION_BASE_URL,
+        apiKey: val.TRANSCRIPTION_API_KEY,
+        model: val.TRANSCRIPTION_MODEL,
+      },
+    },
     crawler: {
       numWorkers: val.CRAWLER_NUM_WORKERS,
       headlessBrowser: val.CRAWLER_HEADLESS_BROWSER,
@@ -697,6 +715,9 @@ export const clientConfig = {
   },
   crawler: {
     videoDownloadOnDemand: serverConfig.crawler.downloadVideoOnDemand,
+  },
+  videoArticle: {
+    enabled: serverConfig.videoArticle.enabled,
   },
   revenueCat: {
     isConfigured: serverConfig.revenueCat.isConfigured,

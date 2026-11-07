@@ -98,6 +98,7 @@ async function runIndex(
           content: await Bookmark.getBookmarkPlainTextContent(
             bookmark.link,
             bookmark.userId,
+            db,
           ),
           publisher: bookmark.link.publisher,
           author: bookmark.link.author,

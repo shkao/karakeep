@@ -287,6 +287,22 @@ export const VideoWorkerQueue = createDeferredQueue<ZVideoRequest>(
   },
 );
 
+// Video Article Worker: turns a downloaded video into a readable article.
+export const zVideoArticleRequestSchema = z.object({
+  bookmarkId: z.string(),
+});
+export type ZVideoArticleRequest = z.infer<typeof zVideoArticleRequestSchema>;
+
+export const VideoArticleQueue = createDeferredQueue<ZVideoArticleRequest>(
+  "video_article_queue",
+  {
+    defaultJobArgs: {
+      numRetries: 2,
+    },
+    keepFailedJobs: false,
+  },
+);
+
 // Feed Worker
 export const zFeedRequestSchema = z.object({
   feedId: z.string(),
