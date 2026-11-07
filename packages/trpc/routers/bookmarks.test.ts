@@ -1,7 +1,17 @@
 import { eq } from "drizzle-orm";
-import { assert, beforeEach, describe, expect, test, vi } from "vitest";
+import {
+  assert,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from "vitest";
 
 import {
+  assets,
+  AssetTypes,
   bookmarkLinks,
   bookmarks,
   rssFeedImportsTable,
@@ -11,6 +21,9 @@ import {
 import * as sharedServer from "@karakeep/shared-server";
 import serverConfig from "@karakeep/shared/config";
 import { BookmarkTypes } from "@karakeep/shared/types/bookmarks";
+import { verifySignedToken } from "@karakeep/shared/signedTokens";
+import { zAssetSignedTokenSchema } from "@karakeep/shared/types/assets";
+import { readAsset as readStoredAsset } from "../../shared-server/src/assetdb";
 
 import { WebhooksService } from "../models/webhooks.service";
 import type { APICallerType, CustomTestContext } from "../testUtils";
@@ -46,9 +59,119 @@ vi.mock("@karakeep/shared-server", async (original) => {
   };
 });
 
+vi.mock("../../shared-server/src/assetdb", async (original) => {
+  const mod =
+    await original<typeof import("../../shared-server/src/assetdb")>();
+  return { ...mod, readAsset: vi.fn(mod.readAsset) };
+});
+
 beforeEach<CustomTestContext>(defaultBeforeEach(true));
 
 describe("Bookmark Routes", () => {
+  test<CustomTestContext>("serves article images with authorized URLs without persisting tokens", async ({
+    apiCallers,
+    db,
+  }) => {
+    const signingSecret = vi
+      .spyOn(serverConfig, "signingSecret")
+      .mockReturnValue("article-image-test-secret");
+    onTestFinished(() => signingSecret.mockRestore());
+    const api = apiCallers[0].bookmarks;
+    const owner = await apiCallers[0].users.whoami();
+    const bookmark = await api.createBookmark({
+      url: "https://example.com/illustrated-article",
+      type: BookmarkTypes.LINK,
+    });
+    const html =
+      '<figure><img src="/api/assets/article-image"><figcaption>Chart</figcaption></figure><img src="/api/assets/another-bookmarks-image">';
+    await db.insert(assets).values({
+      id: "article-image",
+      userId: owner.id,
+      bookmarkId: bookmark.id,
+      assetType: AssetTypes.LINK_ARTICLE_IMAGE,
+      contentType: "image/png",
+      size: 100,
+    });
+    await db
+      .update(bookmarkLinks)
+      .set({ htmlContent: html })
+      .where(eq(bookmarkLinks.id, bookmark.id));
+    const single = await api.getBookmark({
+      bookmarkId: bookmark.id,
+      includeContent: true,
+    });
+    const multiple = await api.getBookmarks({ includeContent: true });
+    for (const result of [
+      single,
+      multiple.bookmarks.find((b) => b.id === bookmark.id)!,
+    ]) {
+      assert(result.content.type === BookmarkTypes.LINK);
+      const imageUrl =
+        result.content.htmlContent!.match(/<img src="([^"]+)"/)![1];
+      const url = new URL(imageUrl);
+      expect(url.pathname).toBe("/api/public/assets/article-image");
+      expect(
+        verifySignedToken(
+          url.searchParams.get("token")!,
+          serverConfig.signingSecret(),
+          zAssetSignedTokenSchema,
+        ),
+      ).toMatchObject({ assetId: "article-image", userId: owner.id });
+      expect(result.content.htmlContent).toContain(
+        'src="/api/assets/another-bookmarks-image"',
+      );
+      expect(result.content.htmlContent).toContain(
+        "<figcaption>Chart</figcaption>",
+      );
+    }
+    const saved = await db.query.bookmarkLinks.findFirst({
+      where: eq(bookmarkLinks.id, bookmark.id),
+    });
+    expect(saved?.htmlContent).toBe(html);
+    const readAsset = vi.mocked(readStoredAsset).mockResolvedValue({
+      asset: Buffer.from(html),
+      metadata: { contentType: "text/html" },
+    });
+    onTestFinished(() => {
+      readAsset.mockReset();
+    });
+    await db.insert(assets).values({
+      id: "article-html",
+      userId: owner.id,
+      bookmarkId: bookmark.id,
+      assetType: AssetTypes.LINK_HTML_CONTENT,
+      contentType: "text/html",
+      size: Buffer.byteLength(html),
+    });
+    await db
+      .update(bookmarkLinks)
+      .set({ htmlContent: null, contentAssetId: "article-html" })
+      .where(eq(bookmarkLinks.id, bookmark.id));
+    const largeSingle = await api.getBookmark({
+      bookmarkId: bookmark.id,
+      includeContent: true,
+    });
+    const largeMultiple = await api.getBookmarks({ includeContent: true });
+    for (const result of [
+      largeSingle,
+      largeMultiple.bookmarks.find((b) => b.id === bookmark.id)!,
+    ]) {
+      assert(result.content.type === BookmarkTypes.LINK);
+      expect(result.content.htmlContent).toContain(
+        "/api/public/assets/article-image?token=",
+      );
+      expect(result.content.htmlContent).toContain(
+        'src="/api/assets/another-bookmarks-image"',
+      );
+    }
+    await expect(
+      apiCallers[1].bookmarks.getBookmark({
+        bookmarkId: bookmark.id,
+        includeContent: true,
+      }),
+    ).rejects.toThrow();
+  });
+
   async function createTestTag(api: APICallerType, tagName: string) {
     const result = await api.tags.create({ name: tagName });
     return result.id;

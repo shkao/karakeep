@@ -132,6 +132,43 @@ function normalizeLazyLoadImages(document: Document): void {
   }
 }
 
+function preserveArticleFigures(document: Document): void {
+  // Readability assigns negative weight to classes containing "media".
+  // Semantic image blocks inside an article can use that class too, so give
+  // those blocks positive article weight without changing unrelated media.
+  for (const block of document.querySelectorAll(
+    'article [data-type="image"]',
+  )) {
+    if (block.querySelector("figure img")) {
+      block.classList.add("article-content");
+    }
+  }
+}
+
+function normalizeResponsiveImages(document: Document): void {
+  for (const image of document.querySelectorAll("img")) {
+    const src = image.getAttribute("src") ?? "";
+    if (src.startsWith("data:") && !isPlaceholderDataImage(src)) {
+      continue;
+    }
+    const srcset =
+      image.getAttribute("data-srcset") ??
+      image.getAttribute("srcset") ??
+      image.closest("picture")?.querySelector("source")?.getAttribute("srcset");
+    if (!srcset) {
+      continue;
+    }
+    // Select the largest described image for storage; the saved img must not
+    // depend on the reader's viewport or the original site's picture sources.
+    const candidates = Array.from(
+      srcset.matchAll(/(\S+)\s+(\d+(?:\.\d+)?)[wx](?:\s*,|\s*$)/g),
+    ).sort((a, b) => Number(b[2]) - Number(a[2]));
+    if (candidates[0]) {
+      image.setAttribute("src", candidates[0][1]);
+    }
+  }
+}
+
 function extractReadableContent(
   htmlContent: string,
   url: string,
@@ -143,6 +180,8 @@ function extractReadableContent(
   const dom = new JSDOM(htmlContent, { url, virtualConsole });
   try {
     normalizeLazyLoadImages(dom.window.document);
+    normalizeResponsiveImages(dom.window.document);
+    preserveArticleFigures(dom.window.document);
     const documentClone = dom.window.document.cloneNode(true) as Document;
     const readableContent = new Readability(documentClone).parse();
     if (!readableContent || typeof readableContent.content !== "string") {

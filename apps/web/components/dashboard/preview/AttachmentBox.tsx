@@ -96,9 +96,11 @@ export default function AttachmentBox({
     },
   });
 
-  bookmark.assets.sort((a, b) => a.assetType.localeCompare(b.assetType));
+  const attachmentAssets = bookmark.assets
+    .filter((asset) => asset.assetType !== "articleImage")
+    .sort((a, b) => a.assetType.localeCompare(b.assetType));
 
-  const hasAssets = bookmark.assets.length > 0;
+  const hasAssets = attachmentAssets.length > 0;
 
   return (
     <Collapsible defaultOpen={true}>
@@ -169,7 +171,7 @@ export default function AttachmentBox({
         </div>
       </div>
       <CollapsibleContent className="flex flex-col gap-1 py-3 text-sm">
-        {bookmark.assets.map((asset) => (
+        {attachmentAssets.map((asset) => (
           <div key={asset.id} className="flex items-center justify-between">
             <Link
               target="_blank"

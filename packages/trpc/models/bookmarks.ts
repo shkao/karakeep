@@ -59,6 +59,7 @@ import {
   getBookmarkTitle,
 } from "@karakeep/shared/utils/bookmarkUtils";
 import { htmlToPlainText } from "@karakeep/shared/utils/htmlUtils";
+import { resolveArticleImageUrls } from "@karakeep/shared/utils/assetUtils";
 
 import { AuthedContext } from "..";
 import { mapDBAssetTypeToUserType } from "../lib/attachments";
@@ -808,14 +809,35 @@ export class Bookmark extends BareBookmark {
   }
 
   asZBookmark(): ZBookmark {
+    let bookmark = this.bookmark;
+    if (
+      bookmark.content.type === BookmarkTypes.LINK &&
+      bookmark.content.htmlContent
+    ) {
+      const expiresAt = getAlignedExpiry(3600, 900);
+      bookmark = {
+        ...bookmark,
+        content: {
+          ...bookmark.content,
+          htmlContent: resolveArticleImageUrls(
+            bookmark.content.htmlContent,
+            bookmark.assets
+              .filter((asset) => asset.assetType === "articleImage")
+              .map((asset) => asset.id),
+            (id) =>
+              Asset.getPublicSignedAssetUrl(id, bookmark.userId, expiresAt),
+          ),
+        },
+      };
+    }
     if (this.bookmark.userId === this.ctx.user.id) {
-      return this.bookmark;
+      return bookmark;
     }
 
     // Collaborators shouldn't see owner-specific state such as favourites,
     // archived flag, or personal notes.
     return {
-      ...this.bookmark,
+      ...bookmark,
       archived: false,
       favourited: false,
       note: null,
