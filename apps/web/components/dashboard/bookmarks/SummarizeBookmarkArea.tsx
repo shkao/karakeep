@@ -23,7 +23,7 @@ function AISummary({
   summary: string;
   readOnly?: boolean;
 }) {
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isExpanded, setIsExpanded] = React.useState(true);
   const { mutate: resummarize, isPending: isResummarizing } =
     useSummarizeBookmark({
       onError: () => {

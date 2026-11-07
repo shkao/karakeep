@@ -42,6 +42,7 @@ import AttachmentBox from "./AttachmentBox";
 import HighlightsBox from "./HighlightsBox";
 import LinkContentSection from "./LinkContentSection";
 import { NoteEditor } from "./NoteEditor";
+import { useReadingMinutes } from "./readingTime";
 import { TextContentSection } from "./TextContentSection";
 
 function ContentLoading() {
@@ -137,6 +138,7 @@ export default function BookmarkPreview({
   const [activeTab, setActiveTab] = useState<string>("content");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: session } = useSession();
+  const readingMinutes = useReadingMinutes(bookmarkId);
 
   const { data: bookmark } = useQuery(
     api.bookmarks.getBookmark.queryOptions(
@@ -204,6 +206,11 @@ export default function BookmarkPreview({
             <ExternalLink className="size-3" />
             <span>{t("preview.view_original")}</span>
           </Link>
+        )}
+        {readingMinutes && (
+          <span className="text-xs text-muted-foreground">
+            {t("preview.reading_time", { count: readingMinutes })}
+          </span>
         )}
       </div>
       <Separator />

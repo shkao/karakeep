@@ -5,10 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import HighlightCard from "@/components/dashboard/highlights/HighlightCard";
 import ReaderSettingsPopover from "@/components/dashboard/preview/ReaderSettingsPopover";
 import ReaderView from "@/components/dashboard/preview/ReaderView";
+import { useReadingMinutes } from "@/components/dashboard/preview/readingTime";
 import { Button } from "@/components/ui/button";
 import { FullPageSpinner } from "@/components/ui/full-page-spinner";
 import { Separator } from "@/components/ui/separator";
 import { useSession } from "@/lib/auth/client";
+import { useTranslation } from "@/lib/i18n/client";
 import { useReaderSettings } from "@/lib/readerSettings";
 import { useQuery } from "@tanstack/react-query";
 import { HighlighterIcon as Highlight, Printer, X } from "lucide-react";
@@ -33,6 +35,8 @@ export default function ReaderViewPage() {
     }),
   );
 
+  const { t } = useTranslation();
+  const readingMinutes = useReadingMinutes(bookmarkId);
   const { data: session } = useSession();
   const router = useRouter();
   const { settings } = useReaderSettings();
@@ -119,8 +123,14 @@ export default function ReaderViewPage() {
                     {bookmark.content.type == BookmarkTypes.LINK && (
                       <span>By {bookmark.content.author}</span>
                     )}
-                    <Separator orientation="vertical" className="h-4" />
-                    <span>8 min</span>
+                    {readingMinutes && (
+                      <>
+                        <Separator orientation="vertical" className="h-4" />
+                        <span>
+                          {t("preview.reading_time", { count: readingMinutes })}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </header>
 

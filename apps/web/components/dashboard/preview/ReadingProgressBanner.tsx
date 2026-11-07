@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "@/lib/i18n/client";
 import { BookOpen, X } from "lucide-react";
 
@@ -13,6 +14,24 @@ export default function ReadingProgressBanner({
   onDismiss: () => void;
 }) {
   const { t } = useTranslation();
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const remaining = useRef(8000);
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
+
+  useEffect(() => {
+    if (hovered || focused) return;
+    const started = Date.now();
+    const timer = window.setTimeout(() => dismiss.current(), remaining.current);
+    return () => {
+      window.clearTimeout(timer);
+      remaining.current = Math.max(
+        0,
+        remaining.current - (Date.now() - started),
+      );
+    };
+  }, [hovered, focused]);
 
   const message =
     percent && percent > 0
@@ -20,7 +39,16 @@ export default function ReadingProgressBanner({
       : t("preview.continue_reading");
 
   return (
-    <div className="sticky top-0 z-10 flex justify-center px-4 py-3">
+    <div
+      className="sticky top-0 z-10 flex justify-center px-4 py-3"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setFocused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget))
+          setFocused(false);
+      }}
+    >
       <div className="flex items-center gap-3 rounded-full border border-border/60 bg-background/80 px-4 py-2 text-sm shadow-sm backdrop-blur-md">
         <BookOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
         <span className="truncate text-muted-foreground">{message}</span>
