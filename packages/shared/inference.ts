@@ -506,6 +506,10 @@ class OllamaInferenceClient implements InferenceClient {
         this.config.outputSchema,
       ),
       stream: true,
+      // Thinking models (e.g. qwen3.5) otherwise stream reasoning into a
+      // separate field and can spend all of num_predict on it, leaving an
+      // empty response. Same as the verified summary path.
+      think: false,
       keep_alive: this.config.keepAlive,
       options: {
         num_ctx: this.config.contextLength,
