@@ -20,6 +20,8 @@ test("preserves article figures with absolute image URLs", async () => {
       <figure><img data-src="/lazy-chart.png" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"></figure>
       <figure><img src="/small-chart.png" srcset="/small-chart.png 400w, /large-chart.png 1600w"></figure>
       <figure><picture><source srcset="/picture-chart.png 2x"><img alt="Picture chart"></picture></figure>
+      <figure><picture><source type="image/avif" srcset="/typed-chart.avif 2x"><source type="image/webp" srcset="/typed-chart.webp 2x"><img alt="Typed chart"></picture></figure>
+      <figure><picture><source srcset="/untyped-chart.avif 2x"><img src="/fallback-chart.jpg" alt="AVIF only"></picture></figure>
       </article></body></html>`,
     );
     const result = await execa(
@@ -56,6 +58,8 @@ test("preserves article figures with absolute image URLs", async () => {
         "https://www.anthropic.com/lazy-chart.png",
         "https://www.anthropic.com/large-chart.png",
         "https://www.anthropic.com/picture-chart.png",
+        "https://www.anthropic.com/typed-chart.webp",
+        "https://www.anthropic.com/fallback-chart.jpg",
       ]);
     } finally {
       dom.window.close();

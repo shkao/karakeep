@@ -18,6 +18,7 @@ import metascraperX from "metascraper-x";
 import metascraperYoutube from "metascraper-youtube";
 import winston from "winston";
 
+import { IMAGE_ASSET_TYPES } from "@karakeep/shared/assetdb";
 import serverConfig from "@karakeep/shared/config";
 import logger from "@karakeep/shared/logger";
 
@@ -145,6 +146,17 @@ function preserveArticleFigures(document: Document): void {
   }
 }
 
+// The crawler can only store picture sources in these formats, so an AVIF or
+// similar source must not replace the img's own src.
+function isCapturableSource(source: Element): boolean {
+  const type = source.getAttribute("type");
+  if (type) {
+    return IMAGE_ASSET_TYPES.has(type.trim().toLowerCase());
+  }
+  const url = source.getAttribute("srcset")?.trim().split(/\s/)[0] ?? "";
+  return /\.(gif|jpe?g|png|webp)$/i.test(url.split(/[?#]/)[0]);
+}
+
 function normalizeResponsiveImages(document: Document): void {
   for (const image of document.querySelectorAll("img")) {
     const src = image.getAttribute("src") ?? "";
@@ -154,7 +166,9 @@ function normalizeResponsiveImages(document: Document): void {
     const srcset =
       image.getAttribute("data-srcset") ??
       image.getAttribute("srcset") ??
-      image.closest("picture")?.querySelector("source")?.getAttribute("srcset");
+      Array.from(image.closest("picture")?.querySelectorAll("source") ?? [])
+        .find(isCapturableSource)
+        ?.getAttribute("srcset");
     if (!srcset) {
       continue;
     }
