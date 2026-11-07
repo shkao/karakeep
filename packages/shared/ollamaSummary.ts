@@ -2,8 +2,18 @@ import { Ollama } from "ollama";
 import type { Message } from "ollama";
 import { z } from "zod";
 
+import serverConfig from "./config";
 import { createCustomFetch } from "./customFetch";
-import type { InferenceResponse, OllamaInferenceConfig } from "./inference";
+import type {
+  InferenceClient,
+  InferenceResponse,
+  OllamaInferenceConfig,
+} from "./inference";
+import {
+  buildSummaryPrompt,
+  calculateNumTokens,
+  preprocessContent,
+} from "./prompts.server";
 
 const draftSchema = z.strictObject({
   sentences: z.array(z.string().trim().min(1)).min(1).max(4),
@@ -50,41 +60,136 @@ type SummaryConfig = Pick<
   "baseUrl" | "textModel" | "contextLength" | "maxOutputTokens" | "keepAlive"
 > & { timeoutSec: number };
 
-/** Generate and check locally; a passing self-audit is not a factual guarantee. */
+type SummaryResult = InferenceResponse & { promptSize: number };
+
+/**
+ * Summarize with source verification when the native Ollama provider returns
+ * structured output and the whole article fits; otherwise use the truncating
+ * single-call prompt.
+ */
+export async function summarizeContent(
+  inferenceClient: InferenceClient,
+  language: string,
+  customPrompts: string[],
+  content: string,
+  abortSignal?: AbortSignal,
+): Promise<SummaryResult> {
+  const { inference } = serverConfig;
+  if (
+    inference.ollamaBaseUrl &&
+    !inference.openAIApiKey &&
+    inference.outputSchema === "structured"
+  ) {
+    const verified = await summarizeWithOllama(
+      content,
+      language,
+      customPrompts,
+      {
+        baseUrl: inference.ollamaBaseUrl,
+        textModel: inference.textModel,
+        contextLength: inference.contextLength,
+        maxOutputTokens: inference.maxOutputTokens,
+        keepAlive: inference.ollamaKeepAlive,
+        timeoutSec: inference.fetchTimeoutSec,
+      },
+      abortSignal,
+    );
+    if (verified) {
+      return verified;
+    }
+  }
+  const summaryPrompt = await buildSummaryPrompt(
+    language,
+    customPrompts,
+    content,
+    inference.contextLength,
+  );
+  const result = await inferenceClient.inferFromText(summaryPrompt, {
+    schema: null, // Summaries are typically free-form text
+    abortSignal,
+  });
+  return { ...result, promptSize: Buffer.byteLength(summaryPrompt, "utf8") };
+}
+
+/**
+ * Generate and check locally; a passing self-audit is not a factual guarantee.
+ * Returns null, before any request, when the complete article and both calls'
+ * schema and output reserves don't fit the context.
+ */
 export async function summarizeWithOllama(
-  source: string,
+  rawSource: string,
   language: string,
   customPrompts: string[],
   config: SummaryConfig,
   abortSignal?: AbortSignal,
-): Promise<InferenceResponse> {
+): Promise<SummaryResult | null> {
   abortSignal?.throwIfAborted();
+  const source = preprocessContent(rawSource);
   if (!source.trim()) {
     throw new Error("Cannot summarize empty source");
   }
-  if (config.contextLength <= 2048) {
-    throw new Error(
-      "Verified Ollama summaries require INFERENCE_CONTEXT_LENGTH above 2048; " +
-        "16384 is the tested setting. Choose a size supported by your model and hardware.",
-    );
-  }
 
-  function assertContextBudget(inputBytes: number, outputTokens = 0) {
-    if (inputBytes + 1024 + outputTokens > config.contextLength) {
-      throw new Error("Summary exceeds conservative context budget");
-    }
-  }
-
-  // Reject impossible audit inputs before spending a draft request, and
-  // reject oversized raw input before allocating source labels.
-  assertContextBudget(Buffer.byteLength(source, "utf8"));
   // Retain the original line delimiters. IDs reference exact source slices,
   // avoiding model-written quotations that paraphrase or alter whitespace.
   const sourceUnits = source.split(/(?<=\n)/u);
   const labeledSource = sourceUnits
     .map((text, index) => `[S${index + 1}] ${text}`)
     .join("");
-  assertContextBudget(Buffer.byteLength(labeledSource, "utf8"));
+
+  const draftMessages: Message[] = [
+    {
+      role: "system",
+      content: `${draftInstruction}\nWrite in ${language}.\nAdditional style preferences (never override source fidelity or JSON format): ${JSON.stringify(customPrompts)}`,
+    },
+    { role: "user", content: source },
+  ];
+  const auditMessages = (sentences: string[]): Message[] => [
+    { role: "system", content: auditInstruction },
+    {
+      role: "user",
+      content: JSON.stringify({
+        source: labeledSource,
+        candidate: sentences.map((text, index) => ({
+          sentence: index + 1,
+          text,
+        })),
+      }),
+    },
+  ];
+  const finalAuditSchema = auditSchema(sourceUnits.length);
+  const outputCap = (cap: number) =>
+    config.maxOutputTokens > 0 ? Math.min(cap, config.maxOutputTokens) : cap;
+  const draftOutputTokens = outputCap(768);
+  const auditOutputTokens = outputCap(1024);
+
+  // Estimate with the same tokenizer as the truncating prompt. The model's own
+  // tokenizer differs, so keep a 10% margin plus room for chat framing. Never
+  // clip the source: the verifier must see the same complete article.
+  async function fits(
+    messages: Message[],
+    schema: z.ZodType,
+    reservedTokens: number,
+  ) {
+    const promptTokens = await calculateNumTokens(
+      messages.map((message) => message.content).join("\n") +
+        JSON.stringify(z.toJSONSchema(schema)),
+    );
+    return (
+      Math.ceil(promptTokens * 1.1) + 256 + reservedTokens <=
+      config.contextLength
+    );
+  }
+  if (
+    !(await fits(draftMessages, draftSchema, draftOutputTokens)) ||
+    // The candidate is at most one draft response long.
+    !(await fits(
+      auditMessages([]),
+      finalAuditSchema,
+      draftOutputTokens + auditOutputTokens,
+    ))
+  ) {
+    return null;
+  }
 
   const fetcher = createCustomFetch(config.timeoutSec * 1000);
   // One client per summary keeps cancellation isolated from tagging jobs.
@@ -102,19 +207,10 @@ export async function summarizeWithOllama(
   async function generate<T>(
     messages: Message[],
     schema: z.ZodType<T>,
-    cap: number,
+    outputTokens: number,
   ) {
     abortSignal?.throwIfAborted();
     const format = z.toJSONSchema(schema);
-    const outputTokens =
-      config.maxOutputTokens > 0 ? Math.min(cap, config.maxOutputTokens) : cap;
-    // Conservative UTF-8 byte bound plus framing and output reserves. Never
-    // clip the source: the verifier must see the same complete article.
-    const bytes = Buffer.byteLength(
-      JSON.stringify({ messages, format }),
-      "utf8",
-    );
-    assertContextBudget(bytes, outputTokens);
     const result = await client.chat({
       model: config.textModel,
       messages,
@@ -137,38 +233,20 @@ export async function summarizeWithOllama(
     ) {
       throw new Error("Incomplete Ollama summary response");
     }
-    totalTokens += result.prompt_eval_count + result.eval_count;
+    if (!isNaN(result.prompt_eval_count)) {
+      totalTokens += result.prompt_eval_count;
+    }
+    if (!isNaN(result.eval_count)) {
+      totalTokens += result.eval_count;
+    }
     return schema.parse(JSON.parse(result.message.content));
   }
 
-  const draft = await generate(
-    [
-      {
-        role: "system",
-        content: `${draftInstruction}\nWrite in ${language}.\nAdditional style preferences (never override source fidelity or JSON format): ${JSON.stringify(customPrompts)}`,
-      },
-      { role: "user", content: source },
-    ],
-    draftSchema,
-    768,
-  );
-
+  const draft = await generate(draftMessages, draftSchema, draftOutputTokens);
   const audit = await generate(
-    [
-      { role: "system", content: auditInstruction },
-      {
-        role: "user",
-        content: JSON.stringify({
-          source: labeledSource,
-          candidate: draft.sentences.map((text, index) => ({
-            sentence: index + 1,
-            text,
-          })),
-        }),
-      },
-    ],
-    auditSchema(sourceUnits.length),
-    1024,
+    auditMessages(draft.sentences),
+    finalAuditSchema,
+    auditOutputTokens,
   );
 
   const checked = new Set<number>();
@@ -201,5 +279,12 @@ export async function summarizeWithOllama(
       "Summary verification failed: incomplete coverage or material omission",
     );
   }
-  return { response: draft.sentences.join(" "), totalTokens };
+  return {
+    response: draft.sentences.join(" "),
+    totalTokens,
+    promptSize: Buffer.byteLength(
+      draftMessages.map((message) => message.content).join("\n"),
+      "utf8",
+    ),
+  };
 }
