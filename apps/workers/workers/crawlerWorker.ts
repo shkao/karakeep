@@ -1130,8 +1130,10 @@ export const crawlAndParseUrl = traced(
                 imageUrl,
                 "article image",
                 maxBytes - downloadedBytes,
+                (bytes) => {
+                  downloadedBytes += bytes;
+                },
               );
-              downloadedBytes += image.image.byteLength;
               if (!IMAGE_ASSET_TYPES.has(image.contentType)) {
                 log.warn(
                   `Skipping article image with unsupported type: ${image.contentType}`,
@@ -2202,12 +2204,14 @@ async function fetchImage(
   url: string,
   label = "banner image",
   maxBytes = serverConfig.maxAssetSizeMb * 1024 * 1024,
+  onChunk?: (bytes: number) => void,
 ) {
   const { contentType, body } = await fetchAsset(ctx, url, label);
   // Grows in place as chunks arrive, so the banner is never held twice in memory.
   const buffer = new ArrayBuffer(0, { maxByteLength: maxBytes });
   const bytes = new Uint8Array(buffer);
   for await (const chunk of body) {
+    onChunk?.(chunk.length);
     ctx.abortSignal.throwIfAborted();
     const offset = buffer.byteLength;
     if (offset + chunk.length > maxBytes) {

@@ -33,11 +33,11 @@ export async function embedOfflineArticleImages(
     }
     await checkpoint?.();
     if (!FileSystem.cacheDirectory) {
-      throw new Error("Temporary storage is not available on this device");
+      continue;
     }
     const directory = `${FileSystem.cacheDirectory}article-image-${Date.now()}-${Math.random().toString(36).slice(2)}/`;
-    await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
     try {
+      await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
       const result = await FileSystem.downloadAsync(
         `${settings.address.replace(/\/$/, "")}${getAssetUrl(asset.id)}`,
         `${directory}image`,
@@ -66,8 +66,13 @@ export async function embedOfflineArticleImages(
         sourcePattern,
         `$1data:${mimeType};base64,${base64}$2`,
       );
+    } catch {
+      // Keep the article when an image is unavailable, but honour sync pauses.
+      await checkpoint?.();
     } finally {
-      await FileSystem.deleteAsync(directory, { idempotent: true });
+      await FileSystem.deleteAsync(directory, { idempotent: true }).catch(
+        () => undefined,
+      );
     }
   }
   return { ...bookmark, content: { ...bookmark.content, htmlContent: html } };
