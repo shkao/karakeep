@@ -11,6 +11,7 @@ import {
 import serverConfig from "@karakeep/shared/config";
 import { InferenceClient } from "@karakeep/shared/inference";
 import logger from "@karakeep/shared/logger";
+import { summarizeWithOllama } from "@karakeep/shared/ollamaSummary";
 import { buildSummaryPrompt } from "@karakeep/shared/prompts.server";
 import { DequeuedJob } from "@karakeep/shared/queueing";
 import { BookmarkTypes } from "@karakeep/shared/types/bookmarks";
@@ -147,21 +148,43 @@ URL: ${link.url ?? ""}
     "inference.prompt.custom_count": prompts.length,
   });
 
-  const summaryPrompt = await buildSummaryPrompt(
-    userSettings?.inferredTagLang ?? serverConfig.inference.inferredTagLang,
-    prompts.map((p) => p.text),
-    textToSummarize,
-    serverConfig.inference.contextLength,
-  );
-
-  addLogFields<"inferenceWorker.run">({
-    "inference.prompt.size": Buffer.byteLength(summaryPrompt, "utf8"),
-  });
-
-  const summaryResult = await inferenceClient.inferFromText(summaryPrompt, {
-    schema: null, // Summaries are typically free-form text
-    abortSignal: job.abortSignal,
-  });
+  const language =
+    userSettings?.inferredTagLang ?? serverConfig.inference.inferredTagLang;
+  const customInstructions = prompts.map((p) => p.text);
+  let summaryResult;
+  if (
+    serverConfig.inference.ollamaBaseUrl &&
+    !serverConfig.inference.openAIApiKey
+  ) {
+    summaryResult = await summarizeWithOllama(
+      textToSummarize,
+      language,
+      customInstructions,
+      {
+        baseUrl: serverConfig.inference.ollamaBaseUrl,
+        textModel: serverConfig.inference.textModel,
+        contextLength: serverConfig.inference.contextLength,
+        maxOutputTokens: serverConfig.inference.maxOutputTokens,
+        keepAlive: serverConfig.inference.ollamaKeepAlive,
+        timeoutSec: serverConfig.inference.fetchTimeoutSec,
+      },
+      job.abortSignal,
+    );
+  } else {
+    const summaryPrompt = await buildSummaryPrompt(
+      language,
+      customInstructions,
+      textToSummarize,
+      serverConfig.inference.contextLength,
+    );
+    addLogFields<"inferenceWorker.run">({
+      "inference.prompt.size": Buffer.byteLength(summaryPrompt, "utf8"),
+    });
+    summaryResult = await inferenceClient.inferFromText(summaryPrompt, {
+      schema: null,
+      abortSignal: job.abortSignal,
+    });
+  }
 
   if (!summaryResult.response) {
     throw new Error(
