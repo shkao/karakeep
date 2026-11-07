@@ -350,6 +350,27 @@ export const bookmarkLinks = sqliteTable(
   (bl) => [index("bookmarkLinks_url_idx").on(bl.url)],
 );
 
+// A readable article written from a link's downloaded video: its caption and
+// speech transcript, rewritten by the text model.
+export const bookmarkVideoArticles = sqliteTable("bookmarkVideoArticles", {
+  id: text("id")
+    .notNull()
+    .primaryKey()
+    .references(() => bookmarks.id, { onDelete: "cascade" }),
+  status: text("status", {
+    enum: ["pending", "success", "failure"],
+  })
+    .notNull()
+    .default("pending"),
+  title: text("title"),
+  content: text("content"),
+  caption: text("caption"),
+  transcript: text("transcript"),
+  error: text("error"),
+  createdAt: createdAtField(),
+  modifiedAt: modifiedAtField(),
+});
+
 export const enum AssetTypes {
   LINK_BANNER_IMAGE = "linkBannerImage",
   LINK_ARTICLE_IMAGE = "linkArticleImage",

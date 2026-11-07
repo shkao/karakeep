@@ -103,6 +103,7 @@ async function buildPrompt(
       (await Bookmark.getBookmarkPlainTextContent(
         bookmark.link,
         bookmark.userId,
+        db,
       )) ?? "";
 
     if (!bookmark.link.description && !content) {
