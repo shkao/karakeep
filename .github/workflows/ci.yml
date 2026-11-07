@@ -71,8 +71,7 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
   tests:
-    # Playwright 1.59 can't install Chromium on ubuntu-latest (26.04).
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.3.1
         with:
@@ -116,6 +115,20 @@ jobs:
       # - name: Plugins Tests
       #   working-directory: packages/plugins
       #   run: pnpm test
+
+  # E2E takes most of CI's time, so it runs after merging and on demand
+  # instead of gating every PR.
+  e2e:
+    if: github.event_name != 'pull_request'
+    # Playwright 1.59 can't install Chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.3.1
+        with:
+          persist-credentials: false
+
+      - name: Setup
+        uses: $/tooling/github/setup
 
       - name: Install Playwright Chromium
         working-directory: packages/e2e_tests
