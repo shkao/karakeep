@@ -131,7 +131,7 @@ export default function EditorCard({ className }: { className?: string }) {
     });
   };
   const cardHeight = useBookmarkLayoutSwitch({
-    grid: "h-96",
+    grid: "aspect-square",
     masonry: "h-48",
     list: undefined,
     compact: undefined,
