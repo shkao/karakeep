@@ -59,7 +59,6 @@ export default function BookmarksGridSkeleton({
     <BookmarkCardSkeleton
       key={i}
       height={bookmarkLayoutSwitch(layout, {
-        masonry: "h-48",
         grid: "h-48",
         list: "h-32",
         compact: "h-4",
@@ -68,15 +67,6 @@ export default function BookmarksGridSkeleton({
   ));
 
   return bookmarkLayoutSwitch(layout, {
-    masonry: (
-      <Masonry
-        className="-ml-4 flex w-auto"
-        columnClassName="pl-4"
-        breakpointCols={breakpointConfig}
-      >
-        {children}
-      </Masonry>
-    ),
     grid: (
       <Masonry
         className="-ml-4 flex w-auto"

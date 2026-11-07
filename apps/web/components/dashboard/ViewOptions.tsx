@@ -37,7 +37,6 @@ import {
   Check,
   Heading,
   Image,
-  LayoutDashboard,
   LayoutGrid,
   LayoutList,
   List,
@@ -47,10 +46,9 @@ import {
   Tag,
 } from "lucide-react";
 
-type LayoutType = "masonry" | "grid" | "list" | "compact";
+type LayoutType = "grid" | "list" | "compact";
 
 const iconMap: Record<LayoutType, LucideIcon> = {
-  masonry: LayoutDashboard,
   grid: LayoutGrid,
   list: LayoutList,
   compact: List,
@@ -74,8 +72,7 @@ export default function ViewOptions() {
     actualDisplaySettings.imageFit,
   );
 
-  const showColumnSlider =
-    optimisticLayout === "grid" || optimisticLayout === "masonry";
+  const showColumnSlider = optimisticLayout === "grid";
 
   // Update temp value when actual value changes
   useEffect(() => {

@@ -48,8 +48,7 @@
   "layouts": {
     "grid": "Rutnät",
     "compact": "Kompakt",
-    "list": "Lista",
-    "masonry": "Murverk"
+    "list": "Lista"
   },
   "actions": {
     "delete": "Radera",

@@ -672,7 +672,6 @@
     }
   },
   "layouts": {
-    "masonry": "Mosaico",
     "grid": "Grade",
     "list": "Lista",
     "compact": "Compacto"

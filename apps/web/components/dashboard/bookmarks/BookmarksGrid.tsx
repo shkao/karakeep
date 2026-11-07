@@ -243,15 +243,6 @@ export default function BookmarksGrid({
   return (
     <>
       {bookmarkLayoutSwitch(layout, {
-        masonry: (
-          <Masonry
-            className="-ml-4 flex w-auto"
-            columnClassName="pl-4"
-            breakpointCols={breakpointConfig}
-          >
-            {children}
-          </Masonry>
-        ),
         grid: (
           <Masonry
             className="-ml-4 flex w-auto"

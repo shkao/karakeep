@@ -46,7 +46,6 @@
     "storage": "Storage"
   },
   "layouts": {
-    "masonry": "Masonry",
     "grid": "Grid",
     "list": "List",
     "compact": "Compact"
