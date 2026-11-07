@@ -18,7 +18,7 @@ async function getEncodingInstance(): Promise<Tiktoken> {
   return encoding;
 }
 
-async function calculateNumTokens(text: string): Promise<number> {
+export async function calculateNumTokens(text: string): Promise<number> {
   const enc = await getEncodingInstance();
   return enc.encode(text).length;
 }
@@ -42,7 +42,7 @@ async function truncateContent(
 /**
  * Remove duplicate whitespaces to avoid tokenization issues
  */
-function preprocessContent(content: string) {
+export function preprocessContent(content: string) {
   return content.replace(/(\s){10,}/g, "$1");
 }
 

@@ -36,7 +36,7 @@ import {
   InferenceClientFactory,
 } from "@karakeep/shared/inference";
 import logger from "@karakeep/shared/logger";
-import { buildSummaryPrompt } from "@karakeep/shared/prompts.server";
+import { summarizeContent } from "@karakeep/shared/ollamaSummary";
 import { EnqueueOptions } from "@karakeep/shared/queueing";
 import { getRateLimitClient } from "@karakeep/shared/ratelimiting";
 import { FilterQuery, getSearchClient } from "@karakeep/shared/search";
@@ -1614,19 +1614,15 @@ Author: ${bookmark.author ?? ""}
         },
       });
 
-      const summaryPrompt = await buildSummaryPrompt(
+      const summary = await summarizeContent(
+        inferenceClient,
         userSettings?.inferredTagLang ?? serverConfig.inference.inferredTagLang,
         prompts.map((p) => p.text),
         bookmarkDetails,
-        serverConfig.inference.contextLength,
       );
 
       addLogFields<"bookmark.summarize">({
-        "inference.prompt.size": Buffer.byteLength(summaryPrompt, "utf8"),
-      });
-
-      const summary = await inferenceClient.inferFromText(summaryPrompt, {
-        schema: null,
+        "inference.prompt.size": summary.promptSize,
       });
 
       if (!summary.response) {

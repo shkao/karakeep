@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { summarizeWithOllama } from "./ollamaSummary";
+import type { InferenceClient } from "./inference";
+import { summarizeContent, summarizeWithOllama } from "./ollamaSummary";
 
-const { chat } = vi.hoisted(() => ({ chat: vi.fn() }));
+const { chat, inference } = vi.hoisted(() => ({
+  chat: vi.fn(),
+  inference: {} as Record<string, unknown>,
+}));
 vi.mock("ollama", () => ({
   Ollama: class {
     chat = chat;
   },
 }));
+vi.mock("./config", () => ({ default: { inference } }));
 
 const source = "Almost all birds returned. Three birds remain unaccounted for.";
 const config = {
@@ -46,7 +51,7 @@ describe("verified Ollama summaries", () => {
   it("returns only a fully checked summary and counts both calls", async () => {
     chat.mockResolvedValueOnce(response(audit()));
     const result = await summarizeWithOllama(source, "English", [], config);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       response: "Almost all birds returned.",
       totalTokens: 30,
     });
@@ -154,18 +159,62 @@ describe("verified Ollama summaries", () => {
     expect(chat).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses oversized source without clipping or calling the model", async () => {
+  it("declines oversized source without clipping or calling the model", async () => {
     await expect(
-      summarizeWithOllama("x".repeat(20000), "English", [], config),
-    ).rejects.toThrow(/context/i);
+      summarizeWithOllama(
+        "The council met again today. ".repeat(3000),
+        "English",
+        [],
+        config,
+      ),
+    ).resolves.toBeNull();
     expect(chat).not.toHaveBeenCalled();
   });
 
-  it("rejects oversized audit labels before spending a draft request", async () => {
+  it("declines oversized audit labels before spending a draft request", async () => {
     await expect(
-      summarizeWithOllama("Fact.\n".repeat(1600), "English", [], config),
-    ).rejects.toThrow(/context/i);
+      summarizeWithOllama("Fact.\n".repeat(4000), "English", [], config),
+    ).resolves.toBeNull();
     expect(chat).not.toHaveBeenCalled();
+  });
+
+  it("verifies a long article that fits by token count, not bytes", async () => {
+    const article =
+      "The council approved the budget after a long public debate.\n".repeat(
+        600,
+      );
+    chat.mockResolvedValueOnce(response(audit()));
+    const result = await summarizeWithOllama(article, "English", [], config);
+    expect(result?.response).toBe("Almost all birds returned.");
+    expect(chat).toHaveBeenCalledTimes(2);
+  });
+
+  it("collapses long whitespace runs like the truncating prompt", async () => {
+    chat.mockResolvedValueOnce(response(audit()));
+    await summarizeWithOllama(
+      `Almost all birds returned.${" ".repeat(20)}Three are missing.`,
+      "English",
+      [],
+      config,
+    );
+    expect(chat.mock.calls[0][0].messages[1].content).toBe(
+      "Almost all birds returned. Three are missing.",
+    );
+  });
+
+  it("does not report NaN tokens when Ollama omits counts", async () => {
+    chat.mockReset();
+    for (const value of [
+      { sentences: ["Almost all birds returned."] },
+      audit(),
+    ]) {
+      chat.mockResolvedValueOnce({
+        ...response(value),
+        prompt_eval_count: undefined,
+      });
+    }
+    const result = await summarizeWithOllama(source, "English", [], config);
+    expect(result?.totalTokens).toBe(10);
   });
 
   it("does not call the model on empty input or cancellation", async () => {
@@ -178,13 +227,13 @@ describe("verified Ollama summaries", () => {
     expect(chat).not.toHaveBeenCalled();
   });
 
-  it("reports the unsupported default context before making a request", async () => {
+  it("declines the default 2048 context without throwing or calling the model", async () => {
     await expect(
       summarizeWithOllama(source, "English", [], {
         ...config,
         contextLength: 2048,
       }),
-    ).rejects.toThrow(/INFERENCE_CONTEXT_LENGTH/);
+    ).resolves.toBeNull();
     expect(chat).not.toHaveBeenCalled();
   });
 
@@ -197,5 +246,65 @@ describe("verified Ollama summaries", () => {
     expect(
       chat.mock.calls.map(([request]) => request.options.num_predict),
     ).toEqual([768, 1024]);
+  });
+});
+
+describe("summary path selection", () => {
+  const inferFromText = vi.fn();
+  const client = { inferFromText } as unknown as InferenceClient;
+
+  beforeEach(() => {
+    chat.mockReset();
+    inferFromText
+      .mockReset()
+      .mockResolvedValue({ response: "Plain summary.", totalTokens: 7 });
+    Object.assign(inference, {
+      ollamaBaseUrl: "http://localhost:11434",
+      openAIApiKey: undefined,
+      outputSchema: "structured",
+      textModel: "local-model",
+      contextLength: 16384,
+      maxOutputTokens: 2048,
+      ollamaKeepAlive: undefined,
+      fetchTimeoutSec: 90,
+    });
+  });
+
+  it("uses verification with native Ollama when the article fits", async () => {
+    chat
+      .mockResolvedValueOnce(
+        response({ sentences: ["Almost all birds returned."] }),
+      )
+      .mockResolvedValueOnce(response(audit()));
+    const result = await summarizeContent(client, "English", [], source);
+    expect(result.response).toBe("Almost all birds returned.");
+    expect(inferFromText).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the truncating prompt at the default 2048 context", async () => {
+    inference.contextLength = 2048;
+    const result = await summarizeContent(client, "English", [], source);
+    expect(result.response).toBe("Plain summary.");
+    expect(result.promptSize).toBeGreaterThan(0);
+    expect(chat).not.toHaveBeenCalled();
+    expect(inferFromText.mock.calls[0][0]).toContain(source);
+  });
+
+  it.each(["json", "plain"])(
+    "falls back when INFERENCE_OUTPUT_SCHEMA is %s",
+    async (outputSchema) => {
+      inference.outputSchema = outputSchema;
+      await expect(
+        summarizeContent(client, "English", [], source),
+      ).resolves.toMatchObject({ response: "Plain summary." });
+      expect(chat).not.toHaveBeenCalled();
+    },
+  );
+
+  it("falls back when an OpenAI key selects the OpenAI client", async () => {
+    inference.openAIApiKey = "key";
+    await summarizeContent(client, "English", [], source);
+    expect(chat).not.toHaveBeenCalled();
+    expect(inferFromText).toHaveBeenCalledOnce();
   });
 });
