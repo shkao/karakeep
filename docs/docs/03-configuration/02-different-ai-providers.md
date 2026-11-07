@@ -49,6 +49,10 @@ EMBEDDING_CONTEXT_LENGTH=2048
 
 Alternatively, you can use the native Ollama API:
 
+Native Ollama summaries use two local calls: drafting followed by sentence-level source verification. They require a model with structured JSON output support. The worker saves a summary only when every sentence passes verification with valid references to exact source slices and no material omissions. A failed check leaves the existing summary untouched and marks the job as failed; valid source references and local self-verification cannot guarantee factual accuracy.
+
+Summaries use one to four sentences, with fewer for sparse content, and respect the configured language and custom style prompts. The full article must fit a conservative context budget, including schema and output reserves; oversized articles fail instead of being truncated. **The default 2048-token context is unsupported for verified summaries.** Set `INFERENCE_CONTEXT_LENGTH` above 2048; start with `16384`, increasing it for longer articles if your model and hardware support it. The full-article test used `65536` with `qwen3.5:4b`. Allow enough `INFERENCE_MAX_OUTPUT_TOKENS` for the verification response (up to 1024 tokens). This path does not apply when `OPENAI_API_KEY` is set, including Ollama's OpenAI-compatible endpoint.
+
 ```
 # MAKE SURE YOU DON'T HAVE OPENAI_API_KEY set, otherwise it takes precedence.
 
