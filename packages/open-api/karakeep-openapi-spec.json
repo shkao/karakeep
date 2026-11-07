@@ -666,6 +666,14 @@
             "type": "string",
             "nullable": true
           },
+          "prefix": {
+            "type": "string",
+            "nullable": true
+          },
+          "suffix": {
+            "type": "string",
+            "nullable": true
+          },
           "note": {
             "type": "string",
             "nullable": true
@@ -686,6 +694,8 @@
           "startOffset",
           "endOffset",
           "text",
+          "prefix",
+          "suffix",
           "note",
           "id",
           "userId",
@@ -3609,6 +3619,14 @@
                     "default": "yellow"
                   },
                   "text": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "prefix": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "suffix": {
                     "type": "string",
                     "nullable": true
                   },

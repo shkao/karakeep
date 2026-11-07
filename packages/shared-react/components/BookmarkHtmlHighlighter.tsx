@@ -2,6 +2,7 @@ import React, {
   forwardRef,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -13,6 +14,10 @@ import {
   SUPPORTED_HIGHLIGHT_COLORS,
   ZHighlightColor,
 } from "@karakeep/shared/types/highlights";
+import {
+  createHighlightResolver,
+  getHighlightContext,
+} from "@karakeep/shared/utils/highlight-anchoring";
 
 import { HIGHLIGHT_COLOR_MAP } from "./highlights";
 import { Button } from "./ui/button";
@@ -51,6 +56,20 @@ const HighlightForm: React.FC<HighlightFormProps> = ({
     onSave(selectedColor, noteText || null);
   };
 
+  // Anchor the popover to a virtual element in viewport coordinates. A DOM
+  // anchor with `position: fixed` gets positioned relative to any transformed
+  // ancestor instead of the viewport (e.g. the bookmark preview dialog), which
+  // made the popover cover the selection.
+  const anchorRef = useMemo(
+    () => ({
+      current: {
+        getBoundingClientRect: () =>
+          new DOMRect(position?.x ?? 0, position?.y ?? 0, 0, 0),
+      },
+    }),
+    [position],
+  );
+
   return (
     <Popover
       open={position !== null}
@@ -60,13 +79,7 @@ const HighlightForm: React.FC<HighlightFormProps> = ({
         }
       }}
     >
-      <PopoverAnchor
-        className="fixed"
-        style={{
-          left: position?.x,
-          top: position?.y,
-        }}
-      />
+      <PopoverAnchor virtualRef={anchorRef} />
       <PopoverContent
         side={isMobile ? "bottom" : "top"}
         className="w-80 space-y-3 p-3"
@@ -133,6 +146,8 @@ export interface Highlight {
   endOffset: number;
   color: ZHighlightColor;
   text: string | null;
+  prefix?: string | null;
+  suffix?: string | null;
   note?: string | null;
 }
 
@@ -202,9 +217,15 @@ const BookmarkHTMLHighlighter = forwardRef<
       }
     });
 
-    // Apply all highlights
+    // Offsets are only a hint: relocate each highlight using its stored
+    // quote and context so that content changes don't misplace it.
+    const resolveRange = createHighlightResolver(getFullText());
     highlights.forEach((highlight) => {
-      applyHighlightByOffset(highlight);
+      const range = resolveRange(highlight);
+      if (!range) {
+        return;
+      }
+      applyHighlightByOffset({ ...highlight, ...range });
     });
   });
 
@@ -304,6 +325,20 @@ const BookmarkHTMLHighlighter = forwardRef<
     }
   };
 
+  const getFullText = (): string => {
+    if (!contentRef.current) return "";
+    let text = "";
+    const walker = document.createTreeWalker(
+      contentRef.current,
+      NodeFilter.SHOW_TEXT,
+      null,
+    );
+    while (walker.nextNode()) {
+      text += walker.currentNode.textContent ?? "";
+    }
+    return text;
+  };
+
   const getTextNodeOffset = (node: Node): number => {
     let offset = 0;
     const walker = document.createTreeWalker(
@@ -333,12 +368,20 @@ const BookmarkHTMLHighlighter = forwardRef<
 
     if (startOffset === -1 || endOffset === -1) return null;
 
+    const { prefix, suffix } = getHighlightContext(
+      getFullText(),
+      startOffset,
+      endOffset,
+    );
+
     const highlight: Highlight = {
       id: "NOT_SET",
       startOffset,
       endOffset,
       color,
       text: range.toString(),
+      prefix,
+      suffix,
     };
 
     applyHighlightByOffset(highlight);
