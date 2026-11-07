@@ -6,6 +6,7 @@ import { db } from "@karakeep/db";
 import { bookmarkLinks, bookmarks, users } from "@karakeep/db/schema";
 import { StorageQuotaError } from "@karakeep/shared-server";
 import { BookmarkTypes } from "@karakeep/shared/types/bookmarks";
+import serverConfig from "@karakeep/shared/config";
 
 import { fetchWithProxy } from "../network";
 import type { CrawlContext } from "./crawlerWorker";
@@ -181,4 +182,29 @@ test("reuses the previous saved image when its download fails", async () => {
     previous!.id,
   ]);
   expect(state.files.has(previous!.id)).toBe(true);
+});
+
+test("counts bytes from oversized responses against the page budget", async () => {
+  const previousLimit = Object.getOwnPropertyDescriptor(
+    serverConfig,
+    "maxAssetSizeMb",
+  )!;
+  Object.defineProperty(serverConfig, "maxAssetSizeMb", {
+    value: 1 / (1024 * 1024),
+    configurable: true,
+  });
+  try {
+    state.html =
+      '<img src="https://example.com/first.png"><img src="https://example.com/second.png">';
+    vi.mocked(fetchWithProxy).mockImplementation(
+      async () =>
+        new Response(Buffer.alloc(2), {
+          headers: { "content-type": "image/png" },
+        }),
+    );
+    await capture();
+    expect(fetchWithProxy).toHaveBeenCalledTimes(1);
+  } finally {
+    Object.defineProperty(serverConfig, "maxAssetSizeMb", previousLimit);
+  }
 });

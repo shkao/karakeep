@@ -25,6 +25,7 @@ const settings = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  files.deleteAsync.mockResolvedValue(undefined);
   files.downloadAsync.mockResolvedValue({
     status: 200,
     mimeType: "image/png",
@@ -61,11 +62,10 @@ describe("offline article images", () => {
     expect(files.downloadAsync).toHaveBeenCalledTimes(1);
   });
 
-  it("fails the save and removes the temporary download if an image cannot be saved", async () => {
+  it("keeps the article text when an image cannot be saved", async () => {
     files.downloadAsync.mockResolvedValue({ status: 403 });
-    await expect(
-      embedOfflineArticleImages(bookmark(), settings),
-    ).rejects.toThrow("Could not download");
+    const result = await embedOfflineArticleImages(bookmark(), settings);
+    expect(result.content).toMatchObject({ htmlContent: html });
     expect(files.deleteAsync).toHaveBeenCalledTimes(1);
   });
 
