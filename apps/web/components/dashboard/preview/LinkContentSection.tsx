@@ -41,7 +41,6 @@ import {
 import { READER_FONT_FAMILIES } from "@karakeep/shared/types/readers";
 
 import { contentRendererRegistry } from "./content-renderers";
-import { defaultLinkSection } from "./defaultLinkSection";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
 import ReaderView from "./ReaderView";
 import SavedPageOverview from "./SavedPageOverview";
@@ -131,15 +130,25 @@ export default function LinkContentSection({
     bookmark,
     clientConfig,
   );
-  const defaultSection =
+  const videoArticleRenderer = availableRenderers.find(
+    (renderer) => renderer.id === "video-article",
+  );
+  const instagramArticle =
+    videoArticleRenderer &&
+    availableRenderers.some((renderer) => renderer.id === "instagram");
+  let defaultSection = instagramArticle
+    ? "cached"
+    : (availableRenderers[0]?.id ?? "cached");
+  if (
+    availableRenderers.length === 0 &&
     bookmark.content.type === BookmarkTypes.LINK
-      ? defaultLinkSection(
-          bookmark.content.url,
-          bookmark.content.readerViewStatus,
-          availableRenderers[0]?.id,
-          bookmark.content.preferredPreview,
-        )
-      : "cached";
+  ) {
+    if (bookmark.content.preferredPreview === "screenshot") {
+      defaultSection = "screenshot";
+    } else if (bookmark.content.preferredPreview === "overview") {
+      defaultSection = "overview";
+    }
+  }
   const [section, setSection] = useQueryState("section", {
     defaultValue: defaultSection,
   });
@@ -156,6 +165,13 @@ export default function LinkContentSection({
   const customRenderer = availableRenderers.find((r) => r.id === section);
   if (customRenderer) {
     const RendererComponent = customRenderer.component;
+    content = (
+      <ErrorBoundary FallbackComponent={CustomRendererErrorFallback}>
+        <RendererComponent bookmark={bookmark} />
+      </ErrorBoundary>
+    );
+  } else if (section === "cached" && instagramArticle) {
+    const RendererComponent = videoArticleRenderer.component;
     content = (
       <ErrorBoundary FallbackComponent={CustomRendererErrorFallback}>
         <RendererComponent bookmark={bookmark} />
@@ -202,17 +218,22 @@ export default function LinkContentSection({
           <SelectContent>
             <SelectGroup>
               {/* Custom renderers first */}
-              {availableRenderers.map((renderer) => {
-                const IconComponent = renderer.icon;
-                return (
-                  <SelectItem key={renderer.id} value={renderer.id}>
-                    <div className="flex items-center">
-                      <IconComponent className="mr-2 h-4 w-4" />
-                      {renderer.name}
-                    </div>
-                  </SelectItem>
-                );
-              })}
+              {availableRenderers
+                .filter(
+                  (renderer) =>
+                    !instagramArticle || renderer.id !== "video-article",
+                )
+                .map((renderer) => {
+                  const IconComponent = renderer.icon;
+                  return (
+                    <SelectItem key={renderer.id} value={renderer.id}>
+                      <div className="flex items-center">
+                        <IconComponent className="mr-2 h-4 w-4" />
+                        {renderer.name}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
 
               {/* Default renderers */}
               <SelectItem value="overview">
@@ -223,7 +244,10 @@ export default function LinkContentSection({
               </SelectItem>
               <SelectItem
                 value="cached"
-                disabled={bookmark.content.readerViewStatus === "unavailable"}
+                disabled={
+                  !instagramArticle &&
+                  bookmark.content.readerViewStatus === "unavailable"
+                }
               >
                 <div className="flex items-center">
                   <BookOpen className="mr-2 h-4 w-4" />
@@ -272,17 +296,19 @@ export default function LinkContentSection({
         {section === "cached" && (
           <>
             <ReaderSettingsPopover />
-            <Tooltip>
-              <TooltipTrigger>
-                <Link
-                  href={`/reader/${bookmark.id}`}
-                  className={buttonVariants({ variant: "outline" })}
-                >
-                  <ExpandIcon className="h-4 w-4" />
-                </Link>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">FullScreen</TooltipContent>
-            </Tooltip>
+            {!instagramArticle && (
+              <Tooltip>
+                <TooltipTrigger>
+                  <Link
+                    href={`/reader/${bookmark.id}`}
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    <ExpandIcon className="h-4 w-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">FullScreen</TooltipContent>
+              </Tooltip>
+            )}
           </>
         )}
         {section === "archive" && (
