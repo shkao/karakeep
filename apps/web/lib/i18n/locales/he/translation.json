@@ -1048,6 +1048,8 @@
   },
   "preview": {
     "view_original": "הצג מקור",
+    "open_original": "פתיחת המקור",
+    "reading_time": "{{count}} דק׳ קריאה",
     "cached_content": "תוכן שנשמר במטמון",
     "reader_view": "תצוגת קורא",
     "page_overview": "סקירת הדף",
@@ -1063,6 +1065,22 @@
     "tabs": {
       "content": "תוכן",
       "details": "פרטים"
+    },
+    "video_article": {
+      "title": "מאמר",
+      "generated_badge": "נוצר מסרטון",
+      "generated_tooltip": "נכתב על ידי בינה מלאכותית מהדיבור בסרטון ומהכיתוב של היוצר. כדאי לבדוק פרטים חשובים מול הסרטון.",
+      "waiting_for_video": "ממתין להורדת הסרטון…",
+      "generating": "הסרטון הופך למאמר. זה נמשך בדרך כלל פחות מדקה.",
+      "failed_title": "לא ניתן היה לכתוב מאמר לסרטון הזה",
+      "not_generated": "עדיין אין מאמר לסרטון הזה.",
+      "write_article": "כתיבת מאמר",
+      "regenerate": "יצירה מחדש",
+      "watch_video": "צפייה בסרטון",
+      "original_caption": "הכיתוב המקורי",
+      "transcript": "תמלול מלא",
+      "no_speech": "בסרטון הזה אין דיבור, ולכן המאמר מבוסס על הכיתוב בלבד.",
+      "open_original": "פתיחת המקור"
     }
   },
   "editor": {

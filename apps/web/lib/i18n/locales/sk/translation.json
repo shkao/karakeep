@@ -1098,6 +1098,8 @@
   },
   "preview": {
     "view_original": "Zobraziť originál",
+    "open_original": "Otvoriť originál",
+    "reading_time": "{{count}} min čítania",
     "cached_content": "Obsah uložený vo vyrovnávacej pamäti",
     "reader_view": "Zobrazenie čítačky",
     "page_overview": "Prehľad stránky",
@@ -1106,6 +1108,22 @@
     "tabs": {
       "content": "Obsah",
       "details": "Podrobnosti"
+    },
+    "video_article": {
+      "title": "Článok",
+      "generated_badge": "Vytvorené z videa",
+      "generated_tooltip": "Napísala AI na základe reči vo videu a popisu autora. Dôležité podrobnosti si overte vo videu.",
+      "waiting_for_video": "Čaká sa na stiahnutie videa…",
+      "generating": "Video sa mení na článok. Zvyčajne to trvá menej ako minútu.",
+      "failed_title": "Pre toto video sa nepodarilo napísať článok",
+      "not_generated": "Pre toto video zatiaľ neexistuje článok.",
+      "write_article": "Napísať článok",
+      "regenerate": "Vytvoriť znova",
+      "watch_video": "Pozrieť video",
+      "original_caption": "Pôvodný popis",
+      "transcript": "Úplný prepis",
+      "no_speech": "Toto video neobsahuje reč, takže článok vychádza iba z popisu.",
+      "open_original": "Otvoriť originál"
     },
     "archive_info": "Archívy sa nemusia vykresľovať správne priamo, ak vyžadujú Javascript. Pre dosiahnutie najlepších výsledkov si ich <1>stiahni a otvor v prehliadači</1>.",
     "fetch_error_title": "Obsah nie je k dispozícii",

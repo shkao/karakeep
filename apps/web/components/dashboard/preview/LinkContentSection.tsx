@@ -25,6 +25,7 @@ import {
   BookOpen,
   Camera,
   ExpandIcon,
+  ExternalLink,
   FileText,
   Info,
   LayoutPanelTop,
@@ -145,7 +146,10 @@ export default function LinkContentSection({
   ) {
     if (bookmark.content.preferredPreview === "screenshot") {
       defaultSection = "screenshot";
-    } else if (bookmark.content.preferredPreview === "overview") {
+    } else if (
+      bookmark.content.preferredPreview === "overview" ||
+      bookmark.content.readerViewStatus === "unavailable"
+    ) {
       defaultSection = "overview";
     }
   }
@@ -208,7 +212,7 @@ export default function LinkContentSection({
 
   return (
     <div className="flex h-full w-full min-w-0 flex-col items-center overflow-hidden">
-      <div className="flex w-full items-center justify-center gap-2 border-b px-3 py-1.5">
+      <div className="flex w-full flex-wrap items-center justify-center gap-2 border-b px-3 py-1.5">
         <Select onValueChange={setSection} value={section}>
           <SelectTrigger className="w-fit">
             <span className="mr-2">
@@ -308,6 +312,17 @@ export default function LinkContentSection({
                 </TooltipTrigger>
                 <TooltipContent side="bottom">FullScreen</TooltipContent>
               </Tooltip>
+            )}
+            {!instagramArticle && (
+              <Link
+                href={bookmark.content.url}
+                target="_blank"
+                rel="noreferrer"
+                className={buttonVariants({ variant: "outline" })}
+              >
+                <ExternalLink className="h-4 w-4" />
+                {t("preview.open_original")}
+              </Link>
             )}
           </>
         )}

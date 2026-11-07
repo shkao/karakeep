@@ -1144,6 +1144,8 @@
   },
   "preview": {
     "view_original": "Féach ar an mBunleagan",
+    "open_original": "Oscail an bunleagan",
+    "reading_time": "{{count}} nóim. léitheoireachta",
     "cached_content": "Ábhar i dTaisce",
     "reader_view": "Amharc an Léitheora",
     "page_overview": "Forléargas ar an Leathanach",
@@ -1152,6 +1154,22 @@
     "tabs": {
       "content": "Ábhar",
       "details": "Sonraí"
+    },
+    "video_article": {
+      "title": "Alt",
+      "generated_badge": "Cruthaithe ón bhfíseán",
+      "generated_tooltip": "Scríofa ag AI ón gcaint san fhíseán agus ó fhotheideal an chruthaitheora. Seiceáil sonraí tábhachtacha in aghaidh an fhíseáin.",
+      "waiting_for_video": "Ag fanacht leis an bhfíseán a íoslódáil…",
+      "generating": "Ag iompú an fhíseáin seo ina alt. Tógann sé níos lú ná nóiméad de ghnáth.",
+      "failed_title": "Níorbh fhéidir alt a scríobh don fhíseán seo",
+      "not_generated": "Níl alt ann don fhíseán seo fós.",
+      "write_article": "Scríobh alt",
+      "regenerate": "Athghin",
+      "watch_video": "Féach ar an bhfíseán",
+      "original_caption": "Fotheideal bunaidh",
+      "transcript": "Tras-scríbhinn iomlán",
+      "no_speech": "Níl aon chaint san fhíseán seo, mar sin tá an t-alt bunaithe ar an bhfotheideal amháin.",
+      "open_original": "Oscail an bunleagan"
     },
     "archive_info": "Seans nach ndéanfar cartlanna a rindreáil i gceart inlíne má tá Javascript ag teastáil uathu. Chun na torthaí is fearr a fháil, <1>íoslódáil í agus oscail i do bhrabhsálaí í</1>.",
     "fetch_error_title": "Níl an tÁbhar ar Fáil",

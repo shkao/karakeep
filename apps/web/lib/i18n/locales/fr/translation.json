@@ -969,6 +969,8 @@
   },
   "preview": {
     "view_original": "Voir l'original",
+    "open_original": "Ouvrir l'original",
+    "reading_time": "{{count}} min de lecture",
     "cached_content": "Contenu en cache",
     "reader_view": "Vue Lecteur",
     "page_overview": "Aperçu de la page",
@@ -977,6 +979,22 @@
     "tabs": {
       "details": "Détails",
       "content": "Contenu"
+    },
+    "video_article": {
+      "title": "Article",
+      "generated_badge": "Généré à partir de la vidéo",
+      "generated_tooltip": "Rédigé par l'IA à partir de la parole de la vidéo et de la légende de son créateur. Vérifiez les détails importants dans la vidéo.",
+      "waiting_for_video": "En attente du téléchargement de la vidéo…",
+      "generating": "Transformation de cette vidéo en article. Cela prend généralement moins d'une minute.",
+      "failed_title": "Impossible de rédiger un article pour cette vidéo",
+      "not_generated": "Il n'y a pas encore d'article pour cette vidéo.",
+      "write_article": "Rédiger l'article",
+      "regenerate": "Régénérer",
+      "watch_video": "Regarder la vidéo",
+      "original_caption": "Légende d'origine",
+      "transcript": "Transcription complète",
+      "no_speech": "Cette vidéo ne contient pas de parole, l'article repose donc uniquement sur la légende.",
+      "open_original": "Ouvrir l'original"
     },
     "archive_info": "Les archives peuvent ne pas s'afficher correctement en ligne si elles nécessitent Javascript. Pour de meilleurs résultats, <1>téléchargez-les et ouvrez-les dans votre navigateur</1>.",
     "fetch_error_title": "Contenu non disponible",

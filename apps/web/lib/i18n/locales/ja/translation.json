@@ -1023,6 +1023,8 @@
   "preview": {
     "cached_content": "キャッシュされたコンテンツ",
     "view_original": "オリジナルを見る",
+    "open_original": "オリジナルを開く",
+    "reading_time": "{{count}} 分で読めます",
     "reader_view": "リーダー表示",
     "page_overview": "ページ概要",
     "try_reader_view": "リーダー表示を試す",
@@ -1030,6 +1032,22 @@
     "tabs": {
       "content": "コンテンツ",
       "details": "詳細"
+    },
+    "video_article": {
+      "title": "記事",
+      "generated_badge": "動画から生成",
+      "generated_tooltip": "動画の音声と投稿者のキャプションをもとに AI が作成しました。重要な内容は動画で確認してください。",
+      "waiting_for_video": "動画のダウンロードを待っています…",
+      "generating": "この動画を記事に変換しています。通常は 1 分以内に完了します。",
+      "failed_title": "この動画の記事を作成できませんでした",
+      "not_generated": "この動画の記事はまだありません。",
+      "write_article": "記事を作成",
+      "regenerate": "再生成",
+      "watch_video": "動画を見る",
+      "original_caption": "元のキャプション",
+      "transcript": "文字起こし全文",
+      "no_speech": "この動画には音声がないため、記事はキャプションのみに基づいています。",
+      "open_original": "オリジナルを開く"
     },
     "archive_info": "アーカイブは Javascript を必要とする場合、インラインで正しく表示されないことがあります。最良の結果を得るには、<1>ダウンロードしてブラウザで開いてください</1>。",
     "fetch_error_title": "コンテンツが利用できません",

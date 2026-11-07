@@ -962,6 +962,8 @@
   },
   "preview": {
     "view_original": "Original anzeigen",
+    "open_original": "Original öffnen",
+    "reading_time": "{{count}} Min. Lesezeit",
     "cached_content": "Gecachte Inhalte",
     "reader_view": "Leseansicht",
     "page_overview": "Seitenübersicht",
@@ -970,6 +972,22 @@
     "tabs": {
       "content": "Inhalt",
       "details": "Details"
+    },
+    "video_article": {
+      "title": "Artikel",
+      "generated_badge": "Aus Video erstellt",
+      "generated_tooltip": "Von KI aus der Sprache im Video und der Beschreibung des Erstellers geschrieben. Prüfe wichtige Details anhand des Videos.",
+      "waiting_for_video": "Warte auf den Download des Videos…",
+      "generating": "Dieses Video wird in einen Artikel umgewandelt. Das dauert meist weniger als eine Minute.",
+      "failed_title": "Für dieses Video konnte kein Artikel geschrieben werden",
+      "not_generated": "Für dieses Video gibt es noch keinen Artikel.",
+      "write_article": "Artikel schreiben",
+      "regenerate": "Neu erstellen",
+      "watch_video": "Video ansehen",
+      "original_caption": "Originalbeschreibung",
+      "transcript": "Vollständiges Transkript",
+      "no_speech": "Dieses Video enthält keine Sprache, daher basiert der Artikel nur auf der Beschreibung.",
+      "open_original": "Original öffnen"
     },
     "archive_info": "Archive werden möglicherweise nicht korrekt inline dargestellt, wenn sie Javascript benötigen. Die besten Ergebnisse erzielst du, wenn du sie <1>herunterlädst und in deinem Browser öffnest</1>.",
     "fetch_error_title": "Inhalte nicht verfügbar",

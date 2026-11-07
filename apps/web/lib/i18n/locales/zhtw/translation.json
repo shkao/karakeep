@@ -958,6 +958,8 @@
   },
   "preview": {
     "view_original": "檢視原始內容",
+    "open_original": "開啟原始內容",
+    "reading_time": "閱讀約需 {{count}} 分鐘",
     "cached_content": "快取內容",
     "reader_view": "閱讀器檢視",
     "page_overview": "頁面概覽",
@@ -966,6 +968,22 @@
     "tabs": {
       "content": "內容",
       "details": "詳細資訊"
+    },
+    "video_article": {
+      "title": "文章",
+      "generated_badge": "由影片產生",
+      "generated_tooltip": "由 AI 根據影片中的語音和創作者的說明撰寫。重要細節請對照影片確認。",
+      "waiting_for_video": "正在等待影片下載…",
+      "generating": "正在將這部影片轉換成文章，通常不到一分鐘即可完成。",
+      "failed_title": "無法為這部影片撰寫文章",
+      "not_generated": "這部影片還沒有文章。",
+      "write_article": "撰寫文章",
+      "regenerate": "重新產生",
+      "watch_video": "觀看影片",
+      "original_caption": "原始說明",
+      "transcript": "完整逐字稿",
+      "no_speech": "這部影片沒有語音，因此文章僅根據說明撰寫。",
+      "open_original": "開啟原始內容"
     },
     "archive_info": "如果封存檔需要 Javascript，可能無法正確地內嵌呈現。為了獲得最佳效果，<1>請下載並在瀏覽器中開啟</1>。",
     "fetch_error_title": "內容無法使用",

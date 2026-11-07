@@ -998,6 +998,8 @@
   },
   "preview": {
     "view_original": "Ver orixinal",
+    "open_original": "Abrir orixinal",
+    "reading_time": "{{count}} min de lectura",
     "cached_content": "Contendo cacheado",
     "reader_view": "Vista de lectura",
     "page_overview": "Resumo da páxina",
@@ -1006,6 +1008,22 @@
     "tabs": {
       "content": "Contido",
       "details": "Detalles"
+    },
+    "video_article": {
+      "title": "Artigo",
+      "generated_badge": "Xerado a partir do vídeo",
+      "generated_tooltip": "Escrito por IA a partir da fala do vídeo e da descrición do creador. Comproba os detalles importantes no vídeo.",
+      "waiting_for_video": "Agardando a que se descargue o vídeo…",
+      "generating": "Convertendo este vídeo nun artigo. Normalmente tarda menos dun minuto.",
+      "failed_title": "Non se puido escribir un artigo para este vídeo",
+      "not_generated": "Aínda non hai ningún artigo para este vídeo.",
+      "write_article": "Escribir artigo",
+      "regenerate": "Rexenerar",
+      "watch_video": "Ver o vídeo",
+      "original_caption": "Descrición orixinal",
+      "transcript": "Transcrición completa",
+      "no_speech": "Este vídeo non ten voz, así que o artigo baséase só na descrición.",
+      "open_original": "Abrir o orixinal"
     },
     "archive_info": "É posible que os arquivos non se representen correctamente en liña se requiren Javascript. Para obter os mellores resultados, <1>descárgueo e ábreo no navegador</1>.",
     "fetch_error_title": "Contido non dispoñible",

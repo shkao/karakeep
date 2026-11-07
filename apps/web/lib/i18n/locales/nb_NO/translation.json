@@ -1121,6 +1121,8 @@
   "preview": {
     "cached_content": "Cachet innhold",
     "view_original": "Vis original",
+    "open_original": "Åpne original",
+    "reading_time": "{{count}} min lesing",
     "reader_view": "Lesevisning",
     "page_overview": "Sideoversikt",
     "try_reader_view": "Prøv lesevisning",
@@ -1128,6 +1130,22 @@
     "tabs": {
       "content": "Innhold",
       "details": "Detaljer"
+    },
+    "video_article": {
+      "title": "Artikkel",
+      "generated_badge": "Generert fra video",
+      "generated_tooltip": "Skrevet av KI ut fra talen i videoen og skaperens bildetekst. Sjekk viktige detaljer mot videoen.",
+      "waiting_for_video": "Venter på at videoen skal lastes ned…",
+      "generating": "Gjør videoen om til en artikkel. Det tar vanligvis under ett minutt.",
+      "failed_title": "Kunne ikke skrive en artikkel for denne videoen",
+      "not_generated": "Det finnes ingen artikkel for denne videoen ennå.",
+      "write_article": "Skriv artikkel",
+      "regenerate": "Generer på nytt",
+      "watch_video": "Se videoen",
+      "original_caption": "Opprinnelig bildetekst",
+      "transcript": "Fullstendig transkripsjon",
+      "no_speech": "Denne videoen har ingen tale, så artikkelen bygger bare på bildeteksten.",
+      "open_original": "Åpne originalen"
     },
     "archive_info": "Det kan hende at arkiver ikke gjengis riktig direkte hvis de krever Javascript. For best resultat, <1>last ned og åpne i nettleseren din</1>.",
     "fetch_error_title": "Innhold utilgjengelig",

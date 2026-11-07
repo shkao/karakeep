@@ -1084,6 +1084,8 @@
   },
   "preview": {
     "view_original": "Eredeti megjelenítése",
+    "open_original": "Eredeti megnyitása",
+    "reading_time": "{{count}} perc olvasás",
     "cached_content": "Gyorsítótárazott tartalmak",
     "reader_view": "Olvasó nézet",
     "page_overview": "Oldal áttekintése",
@@ -1092,6 +1094,22 @@
     "tabs": {
       "content": "Tartalom",
       "details": "Részletek"
+    },
+    "video_article": {
+      "title": "Cikk",
+      "generated_badge": "Videóból készült",
+      "generated_tooltip": "A mesterséges intelligencia írta a videóban elhangzottak és a készítő leírása alapján. A fontos részleteket ellenőrizd a videóban.",
+      "waiting_for_video": "Várakozás a videó letöltésére…",
+      "generating": "A videó cikké alakítása folyamatban. Ez általában egy percnél rövidebb ideig tart.",
+      "failed_title": "Nem sikerült cikket írni ehhez a videóhoz",
+      "not_generated": "Ehhez a videóhoz még nincs cikk.",
+      "write_article": "Cikk írása",
+      "regenerate": "Újragenerálás",
+      "watch_video": "Videó megtekintése",
+      "original_caption": "Eredeti leírás",
+      "transcript": "Teljes átirat",
+      "no_speech": "Ebben a videóban nincs beszéd, ezért a cikk csak a leíráson alapul.",
+      "open_original": "Eredeti megnyitása"
     },
     "archive_info": "Lehetséges, hogy a JavaScriptet igénylő archívumok nem jelennek meg helyesen beágyazva. A legjobb eredmény érdekében <1>töltsd le és nyisd meg a böngésződben</1>.",
     "fetch_error_title": "A tartalom nem érhető el",

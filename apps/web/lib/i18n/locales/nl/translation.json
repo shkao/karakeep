@@ -856,6 +856,8 @@
   },
   "preview": {
     "view_original": "Toon origineel",
+    "open_original": "Origineel openen",
+    "reading_time": "{{count}} min leestijd",
     "cached_content": "Inhoud in cache",
     "reader_view": "Lezersweergave",
     "page_overview": "Paginaoverzicht",
@@ -864,6 +866,22 @@
     "tabs": {
       "content": "Inhoud",
       "details": "Details"
+    },
+    "video_article": {
+      "title": "Artikel",
+      "generated_badge": "Gemaakt van video",
+      "generated_tooltip": "Door AI geschreven op basis van de spraak in de video en het bijschrift van de maker. Controleer belangrijke details in de video.",
+      "waiting_for_video": "Wachten tot de video is gedownload…",
+      "generating": "Deze video wordt omgezet in een artikel. Dit duurt meestal minder dan een minuut.",
+      "failed_title": "Kon geen artikel schrijven voor deze video",
+      "not_generated": "Er is nog geen artikel voor deze video.",
+      "write_article": "Artikel schrijven",
+      "regenerate": "Opnieuw genereren",
+      "watch_video": "Video bekijken",
+      "original_caption": "Oorspronkelijk bijschrift",
+      "transcript": "Volledig transcript",
+      "no_speech": "Deze video bevat geen spraak, dus het artikel is alleen gebaseerd op het bijschrift.",
+      "open_original": "Origineel openen"
     },
     "archive_info": "Archieven worden mogelijk niet correct inline weergegeven als ze Javascript vereisen. Voor de beste resultaten kun je het <1>downloaden en openen in je browser</1>.",
     "fetch_error_title": "Inhoud niet beschikbaar",
