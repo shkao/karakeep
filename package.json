@@ -25,7 +25,7 @@
     "format:fix": "turbo format:fix --continue",
     "lint": "turbo lint --continue",
     "lint:fix": "turbo lint:fix --continue",
-    "test": "turbo test",
+    "test": "turbo test --concurrency=2",
     "typecheck": "turbo typecheck",
     "preflight": "turbo run typecheck lint format",
     "preflight:fix": "turbo run typecheck lint:fix format:fix"
