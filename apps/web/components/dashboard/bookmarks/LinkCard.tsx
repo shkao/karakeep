@@ -39,12 +39,42 @@ function LinkTitle({ bookmark }: { bookmark: ZBookmarkTypeLink }) {
   );
 }
 
+function LinkPlaceholder({ bookmark }: { bookmark: ZBookmarkTypeLink }) {
+  const host = new URL(bookmark.content.url).host.replace(/^www\./, "");
+  return (
+    <div className="flex size-full flex-col items-center justify-center gap-3 bg-gradient-to-br from-muted via-background to-accent">
+      <div className="flex size-14 items-center justify-center rounded-2xl bg-card shadow-sm ring-1 ring-border">
+        {bookmark.content.favicon ? (
+          <Image
+            src={bookmark.content.favicon}
+            alt=""
+            aria-hidden
+            width={28}
+            height={28}
+            unoptimized
+            className="size-7"
+          />
+        ) : (
+          <span className="text-xl font-semibold uppercase text-muted-foreground">
+            {host.charAt(0)}
+          </span>
+        )}
+      </div>
+      <span className="max-w-[80%] truncate text-xs font-medium text-muted-foreground">
+        {host}
+      </span>
+    </div>
+  );
+}
+
 function LinkImage({
   bookmark,
   className,
+  placeholder = false,
 }: {
   bookmark: ZBookmarkTypeLink;
   className?: string;
+  placeholder?: boolean;
 }) {
   const { onClickUrl, urlTarget } = useOnClickUrl(bookmark);
   const link = bookmark.content;
@@ -66,6 +96,8 @@ function LinkImage({
     img = imgComponent("/blur.avif", false);
   } else if (imageDetails) {
     img = imgComponent(imageDetails.url, true);
+  } else if (placeholder) {
+    img = <LinkPlaceholder bookmark={bookmark} />;
   } else {
     // No image found
     // A dummy white pixel for when there's no image.
@@ -102,8 +134,12 @@ export default function LinkCard({
       footer={<FooterLinkURL url={getSourceUrl(bookmarkLink)} />}
       bookmark={bookmarkLink}
       wrapTags={false}
-      image={(_layout, className) => (
-        <LinkImage className={className} bookmark={bookmarkLink} />
+      image={(layout, className) => (
+        <LinkImage
+          className={className}
+          bookmark={bookmarkLink}
+          placeholder={layout === "grid"}
+        />
       )}
       className={className}
       bookmarkIndex={bookmarkIndex}

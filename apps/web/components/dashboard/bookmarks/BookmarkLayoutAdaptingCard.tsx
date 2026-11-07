@@ -432,6 +432,106 @@ function GridView({
   );
 }
 
+function SquareGridView({
+  bookmark,
+  image,
+  title,
+  content,
+  footer,
+  className,
+  bookmarkIndex,
+}: Props) {
+  const { showNotes, showTags, showTitle, imageFit } =
+    useBookmarkDisplaySettings();
+  const imgFitClass = switchCase(imageFit, {
+    cover: "object-cover",
+    contain: "object-contain",
+  });
+  const note = showNotes ? bookmark.note?.trim() : undefined;
+  const img = image("grid", cn("size-full", imgFitClass));
+  const favicon =
+    bookmark.content.type === BookmarkTypes.LINK
+      ? bookmark.content.favicon
+      : undefined;
+
+  return (
+    <div
+      className={cn(
+        "group relative flex aspect-square flex-col overflow-hidden rounded-xl transition-[transform,box-shadow] duration-200 ease-out hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0",
+        className,
+      )}
+      data-bookmark-index={bookmarkIndex}
+    >
+      <BulkEditSelectionOverlay bookmark={bookmark} />
+      <OwnerIndicator bookmark={bookmark} />
+      <DragHandle bookmark={bookmark} className="left-2 top-2" />
+      <HoverActionBar bookmark={bookmark} />
+      {img ? (
+        <div className="relative h-[58%] w-full shrink-0 overflow-hidden bg-muted">
+          <div className="relative size-full transition-transform duration-500 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100">
+            {img}
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/20 to-transparent" />
+        </div>
+      ) : (
+        content && (
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-muted/40 px-4 pt-4 text-sm leading-relaxed">
+            {content}
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-card to-transparent" />
+          </div>
+        )
+      )}
+      <div
+        className={cn(
+          "flex min-h-0 flex-col gap-1.5 px-3 pb-2 pt-3",
+          img || !content ? "flex-1" : "shrink-0",
+        )}
+      >
+        {footer && (
+          <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {favicon && (
+              <Image
+                src={favicon}
+                alt=""
+                aria-hidden
+                width={14}
+                height={14}
+                unoptimized
+                className="size-3.5 shrink-0 rounded-sm"
+              />
+            )}
+            <div className="min-w-0 truncate">{footer}</div>
+          </div>
+        )}
+        {showTitle && title && (
+          <div className="line-clamp-2 shrink-0 break-words text-[15px] font-semibold leading-snug tracking-tight text-card-foreground">
+            {title}
+          </div>
+        )}
+        {note && <NotePreview note={note} bookmarkId={bookmark.id} />}
+        {showTags && (
+          <div className="flex min-h-0 shrink flex-wrap gap-1 overflow-hidden [max-height:1.6rem]">
+            <TagList
+              bookmark={bookmark}
+              loading={isBookmarkStillTagging(bookmark)}
+            />
+          </div>
+        )}
+        <div className="mt-auto flex w-full shrink-0 items-center justify-between text-xs text-muted-foreground">
+          <Link
+            href={`/dashboard/preview/${bookmark.id}`}
+            suppressHydrationWarning
+            className="hover:text-foreground"
+          >
+            <BookmarkFormattedCreatedAt createdAt={bookmark.createdAt} />
+          </Link>
+          <BookmarkActionBar bookmark={bookmark} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CompactView({
   bookmark,
   title,
@@ -510,7 +610,7 @@ export function BookmarkLayoutAdaptingCard(props: Props) {
 
   return bookmarkLayoutSwitch(layout, {
     masonry: <GridView layout={layout} {...props} />,
-    grid: <GridView layout={layout} {...props} />,
+    grid: <SquareGridView {...props} />,
     list: <ListView {...props} />,
     compact: <CompactView {...props} />,
   });
