@@ -816,7 +816,7 @@ export class Bookmark extends BareBookmark {
       bookmark.content.type === BookmarkTypes.LINK &&
       bookmark.content.htmlContent
     ) {
-      const expiresAt = getAlignedExpiry(3600, 900);
+      const expiresAt = getAlignedExpiry(4 * 3600, 3 * 3600);
       bookmark = {
         ...bookmark,
         content: {

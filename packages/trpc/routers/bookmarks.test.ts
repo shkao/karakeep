@@ -72,6 +72,53 @@ vi.mock("../../shared-server/src/assetdb", async (original) => {
 beforeEach<CustomTestContext>(defaultBeforeEach(true));
 
 describe("Bookmark Routes", () => {
+  test<CustomTestContext>("reader image URLs remain valid two hours after opening", async ({
+    apiCallers,
+    db,
+  }) => {
+    const signingSecret = vi
+      .spyOn(serverConfig, "signingSecret")
+      .mockReturnValue("reader-image-expiry-test-secret");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-07T10:44:00Z"));
+    onTestFinished(() => {
+      vi.useRealTimers();
+      signingSecret.mockRestore();
+    });
+    const api = apiCallers[0].bookmarks;
+    const owner = await apiCallers[0].users.whoami();
+    const bookmark = await api.createBookmark({
+      url: "https://example.com/reader-image-expiry",
+      type: BookmarkTypes.LINK,
+    });
+    await db.insert(assets).values({
+      id: "reader-expiry-image",
+      userId: owner.id,
+      bookmarkId: bookmark.id,
+      assetType: AssetTypes.LINK_ARTICLE_IMAGE,
+      contentType: "image/png",
+      size: 1,
+    });
+    await db
+      .update(bookmarkLinks)
+      .set({ htmlContent: '<img src="/api/assets/reader-expiry-image">' })
+      .where(eq(bookmarkLinks.id, bookmark.id));
+    const saved = await api.getBookmark({
+      bookmarkId: bookmark.id,
+      includeContent: true,
+    });
+    assert(saved.content.type === BookmarkTypes.LINK);
+    const url = new URL(saved.content.htmlContent!.match(/src="([^"]+)"/)![1]);
+    vi.setSystemTime(new Date("2026-11-07T12:44:00Z"));
+    expect(
+      verifySignedToken(
+        url.searchParams.get("token")!,
+        serverConfig.signingSecret(),
+        zAssetSignedTokenSchema,
+      ),
+    ).toMatchObject({ assetId: "reader-expiry-image", userId: owner.id });
+  });
+
   test<CustomTestContext>("serves article images with authorized URLs without persisting tokens", async ({
     apiCallers,
     db,

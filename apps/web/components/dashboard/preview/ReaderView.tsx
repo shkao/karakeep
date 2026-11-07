@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { FullPageSpinner } from "@/components/ui/full-page-spinner";
 import { toast } from "@/components/ui/sonner";
 import { useTranslation } from "@/lib/i18n/client";
@@ -37,13 +38,28 @@ export default function ReaderView({
       bookmarkId,
     }),
   );
-  const { data: cachedContent, isPending: isCachedContentLoading } = useQuery(
+  const retriedImages = useRef(new Set<string>());
+  useEffect(() => {
+    retriedImages.current.clear();
+  }, [bookmarkId]);
+  const {
+    data: cachedContent,
+    isPending: isCachedContentLoading,
+    refetch: refetchContent,
+  } = useQuery(
     api.bookmarks.getBookmark.queryOptions(
       {
         bookmarkId,
         includeContent: true,
       },
       {
+        refetchInterval: (query) => {
+          const content = query.state.data?.content;
+          return content?.type === BookmarkTypes.LINK &&
+            content.htmlContent?.includes("/public/assets/")
+            ? 30 * 60 * 1000
+            : false;
+        },
         select: (data) =>
           data.content.type == BookmarkTypes.LINK
             ? data.content.htmlContent
@@ -51,6 +67,19 @@ export default function ReaderView({
       },
     ),
   );
+
+  const retryImage = (event: React.SyntheticEvent<HTMLDivElement>) => {
+    const image = event.target;
+    if (!(image instanceof HTMLImageElement)) return;
+    const url = new URL(image.src);
+    const match = url.pathname.match(/\/public\/assets\/([\w-]+)$/);
+    if (!match || !url.searchParams.has("token")) return;
+    if (retriedImages.current.has(match[1])) return;
+    retriedImages.current.add(match[1]);
+    void refetchContent().then(() => {
+      if (image.isConnected) image.setAttribute("src", image.src);
+    });
+  };
 
   const {
     showBanner,
@@ -149,37 +178,39 @@ export default function ReaderView({
             onDismiss={onDismiss}
           />
         )}
-        <BookmarkHTMLHighlighter
-          className={className}
-          style={style}
-          htmlContent={cachedContent || ""}
-          highlights={highlights?.highlights ?? []}
-          readOnly={readOnly}
-          onDeleteHighlight={(h) =>
-            deleteHighlight({
-              highlightId: h.id,
-            })
-          }
-          onUpdateHighlight={(h) =>
-            updateHighlight({
-              highlightId: h.id,
-              color: h.color,
-              note: h.note,
-            })
-          }
-          onHighlight={(h) =>
-            createHighlight({
-              startOffset: h.startOffset,
-              endOffset: h.endOffset,
-              color: h.color,
-              bookmarkId,
-              text: h.text,
-              prefix: h.prefix ?? null,
-              suffix: h.suffix ?? null,
-              note: h.note ?? null,
-            })
-          }
-        />
+        <div onErrorCapture={retryImage}>
+          <BookmarkHTMLHighlighter
+            className={className}
+            style={style}
+            htmlContent={cachedContent || ""}
+            highlights={highlights?.highlights ?? []}
+            readOnly={readOnly}
+            onDeleteHighlight={(h) =>
+              deleteHighlight({
+                highlightId: h.id,
+              })
+            }
+            onUpdateHighlight={(h) =>
+              updateHighlight({
+                highlightId: h.id,
+                color: h.color,
+                note: h.note,
+              })
+            }
+            onHighlight={(h) =>
+              createHighlight({
+                startOffset: h.startOffset,
+                endOffset: h.endOffset,
+                color: h.color,
+                bookmarkId,
+                text: h.text,
+                prefix: h.prefix ?? null,
+                suffix: h.suffix ?? null,
+                note: h.note ?? null,
+              })
+            }
+          />
+        </div>
       </ScrollProgressTracker>
     );
   }
