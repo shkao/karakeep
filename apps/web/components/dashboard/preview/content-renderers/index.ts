@@ -2,9 +2,11 @@ import { amazonRenderer } from "./AmazonRenderer";
 import { contentRendererRegistry } from "./registry";
 import { instagramRenderer } from "./InstagramRenderer";
 import { tikTokRenderer } from "./TikTokRenderer";
+import { videoArticleRenderer } from "./VideoArticleRenderer";
 import { xRenderer } from "./XRenderer";
 import { youTubeRenderer } from "./YouTubeRenderer";
 
+contentRendererRegistry.register(videoArticleRenderer);
 contentRendererRegistry.register(youTubeRenderer);
 contentRendererRegistry.register(xRenderer);
 contentRendererRegistry.register(amazonRenderer);

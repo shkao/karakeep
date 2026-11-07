@@ -29,6 +29,9 @@ export const DEFAULT_CLIENT_CONFIG: ZClientConfig = {
   crawler: {
     videoDownloadOnDemand: false,
   },
+  videoArticle: {
+    enabled: false,
+  },
   revenueCat: {
     isConfigured: false,
     purchasePlatforms: [],
@@ -78,6 +81,10 @@ export function ClientConfigProvider({
       crawler: {
         ...DEFAULT_CLIENT_CONFIG.crawler,
         ...value?.crawler,
+      },
+      videoArticle: {
+        ...DEFAULT_CLIENT_CONFIG.videoArticle,
+        ...value?.videoArticle,
       },
       revenueCat: {
         ...DEFAULT_CLIENT_CONFIG.revenueCat,

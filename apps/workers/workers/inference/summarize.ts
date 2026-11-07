@@ -25,6 +25,7 @@ async function fetchBookmarkDetailsForSummary(bookmarkId: string) {
     with: {
       link: {
         columns: {
+          id: true,
           title: true,
           description: true,
           htmlContent: true,
@@ -100,8 +101,11 @@ export async function runSummarization(
 
     // Extract plain text content from HTML for summarization
     let content =
-      (await Bookmark.getBookmarkPlainTextContent(link, bookmarkData.userId)) ??
-      "";
+      (await Bookmark.getBookmarkPlainTextContent(
+        link,
+        bookmarkData.userId,
+        db,
+      )) ?? "";
 
     if (!link.description && !content) {
       // No content to infer from; skip summarization

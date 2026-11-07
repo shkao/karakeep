@@ -15,6 +15,7 @@ import {
   AssetTypes,
   bookmarkLinks,
   bookmarks,
+  bookmarkVideoArticles,
   rssFeedImportsTable,
   tagsOnBookmarks,
   users,
@@ -1265,6 +1266,118 @@ describe("Bookmark Routes", () => {
       .where(eq(bookmarkLinks.id, brokenBookmark.id));
     const emptyResult = await api.getBrokenLinks();
     expect(emptyResult.bookmarks.length).toEqual(0);
+  });
+
+  describe("video articles", () => {
+    const originalEnabled = serverConfig.videoArticle.enabled;
+
+    beforeEach(() => {
+      serverConfig.videoArticle.enabled = true;
+      getTestQueueMocks().videoArticleEnqueue.mockClear();
+    });
+
+    afterEach(() => {
+      serverConfig.videoArticle.enabled = originalEnabled;
+      vi.restoreAllMocks();
+    });
+
+    async function createVideoBookmark(
+      { apiCallers, db }: CustomTestContext,
+      { withVideo }: { withVideo: boolean },
+    ) {
+      const bookmark = await apiCallers[0].bookmarks.createBookmark({
+        url: "https://www.instagram.com/reel/abc123/",
+        type: BookmarkTypes.LINK,
+      });
+      await db
+        .update(bookmarkLinks)
+        .set({ htmlContent: "<p>Follow · Instagram page chrome</p>" })
+        .where(eq(bookmarkLinks.id, bookmark.id));
+      if (withVideo) {
+        const user = await db.query.bookmarks.findFirst({
+          where: eq(bookmarks.id, bookmark.id),
+          columns: { userId: true },
+        });
+        await db.insert(assets).values({
+          id: `video-${bookmark.id}`,
+          bookmarkId: bookmark.id,
+          userId: user!.userId,
+          assetType: AssetTypes.LINK_VIDEO,
+          contentType: "video/mp4",
+          size: 1,
+        });
+      }
+      return bookmark;
+    }
+
+    test<CustomTestContext>("summaries read the video article instead of the crawled page", async (context) => {
+      const bookmark = await createVideoBookmark(context, { withVideo: true });
+      await context.db.insert(bookmarkVideoArticles).values({
+        id: bookmark.id,
+        status: "success",
+        content: "# Five skills\n\nThe speaker explains five skills.",
+      });
+      const inferFromText = vi
+        .fn<InferenceClient["inferFromText"]>()
+        .mockResolvedValue({ response: "A summary", totalTokens: 1 });
+      vi.spyOn(InferenceClientFactory, "build").mockReturnValue({
+        inferFromText,
+        inferFromImage: vi.fn(),
+        generateEmbeddingFromText: vi.fn(),
+      });
+
+      await context.apiCallers[0].bookmarks.summarizeBookmark({
+        bookmarkId: bookmark.id,
+      });
+
+      const prompt = inferFromText.mock.calls[0][0];
+      expect(prompt).toContain("The speaker explains five skills.");
+      expect(prompt).not.toContain("Instagram page chrome");
+    });
+
+    test<CustomTestContext>("regenerating needs a downloaded video", async (context) => {
+      const bookmark = await createVideoBookmark(context, { withVideo: false });
+
+      await expect(
+        context.apiCallers[0].bookmarks.regenerateVideoArticle({
+          bookmarkId: bookmark.id,
+        }),
+      ).rejects.toThrow(/no downloaded video/);
+      expect(getTestQueueMocks().videoArticleEnqueue).not.toHaveBeenCalled();
+    });
+
+    test<CustomTestContext>("regenerating marks the article pending and queues it", async (context) => {
+      const api = context.apiCallers[0].bookmarks;
+      const bookmark = await createVideoBookmark(context, { withVideo: true });
+      await context.db.insert(bookmarkVideoArticles).values({
+        id: bookmark.id,
+        status: "failure",
+        error: "Transcription failed",
+      });
+
+      await api.regenerateVideoArticle({ bookmarkId: bookmark.id });
+
+      expect(
+        await api.getVideoArticle({ bookmarkId: bookmark.id }),
+      ).toMatchObject({ status: "pending", error: null });
+      expect(getTestQueueMocks().videoArticleEnqueue).toHaveBeenCalledWith(
+        { bookmarkId: bookmark.id },
+        expect.objectContaining({
+          idempotencyKey: `video-article:${bookmark.id}`,
+        }),
+      );
+    });
+
+    test<CustomTestContext>("only the owner can regenerate", async (context) => {
+      const bookmark = await createVideoBookmark(context, { withVideo: true });
+
+      await expect(
+        context.apiCallers[1].bookmarks.regenerateVideoArticle({
+          bookmarkId: bookmark.id,
+        }),
+      ).rejects.toThrow();
+      expect(getTestQueueMocks().videoArticleEnqueue).not.toHaveBeenCalled();
+    });
   });
 
   describe("summarizeBookmark", () => {

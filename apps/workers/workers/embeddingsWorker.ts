@@ -289,6 +289,7 @@ async function buildEmbeddingText(
     rawContent = await Bookmark.getBookmarkPlainTextContent(
       bookmark.link,
       bookmark.userId,
+      db,
     );
   } else if (bookmark.text) {
     appendProfileField(

@@ -1,4 +1,5 @@
 import { ZBookmark } from "@karakeep/shared/types/bookmarks";
+import type { ZClientConfig } from "@karakeep/shared/types/config";
 
 import { ContentRenderer, ContentRendererRegistry } from "./types";
 
@@ -12,9 +13,12 @@ class ContentRendererRegistryImpl implements ContentRendererRegistry {
     this.renderers.set(renderer.id, renderer);
   }
 
-  getRenderers(bookmark: ZBookmark): ContentRenderer[] {
+  getRenderers(
+    bookmark: ZBookmark,
+    clientConfig: ZClientConfig,
+  ): ContentRenderer[] {
     return [...this.renderers.values()]
-      .filter((renderer) => renderer.canRender(bookmark))
+      .filter((renderer) => renderer.canRender(bookmark, clientConfig))
       .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
   }
 

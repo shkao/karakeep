@@ -13,6 +13,7 @@ import {
   saveAssetFromFile,
   silentDeleteAsset,
   StorageQuotaError,
+  VideoArticleQueue,
   VideoWorkerQueue,
   ZVideoRequest,
   zvideoRequestSchema,
@@ -232,6 +233,12 @@ async function runWorker(job: DequeuedJob<ZVideoRequest>) {
     logger.info(
       `[VideoCrawler][${jobId}] Finished downloading video from "${normalizedUrl}" and adding it to the database`,
     );
+    if (serverConfig.videoArticle.enabled) {
+      await VideoArticleQueue.enqueue(
+        { bookmarkId },
+        { idempotencyKey: `video-article:${bookmarkId}`, groupId: userId },
+      );
+    }
   } catch (error) {
     if (error instanceof StorageQuotaError) {
       logger.warn(

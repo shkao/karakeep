@@ -18,6 +18,7 @@ import invariant from "tiny-invariant";
 import TurndownService from "turndown";
 import { z } from "zod";
 
+import type { DB } from "@karakeep/db";
 import { db as DONT_USE_db } from "@karakeep/db";
 import {
   assets,
@@ -28,6 +29,7 @@ import {
   bookmarksInLists,
   bookmarkTags,
   bookmarkTexts,
+  bookmarkVideoArticles,
   rssFeedImportsTable,
   tagsOnBookmarks,
 } from "@karakeep/db/schema";
@@ -1003,16 +1005,33 @@ export class Bookmark extends BareBookmark {
     return null;
   }
 
+  /**
+   * The text that tagging, summaries, embeddings and search read: a link's
+   * article written from its video when there is one, else its crawled page.
+   */
   static async getBookmarkPlainTextContent(
     {
+      id,
       contentAssetId,
       htmlContent,
     }: {
+      id: string;
       contentAssetId: string | null;
       htmlContent: string | null;
     },
     userId: string,
+    database: DB,
   ): Promise<string | null> {
+    const article = await database.query.bookmarkVideoArticles.findFirst({
+      where: and(
+        eq(bookmarkVideoArticles.id, id),
+        eq(bookmarkVideoArticles.status, "success"),
+      ),
+      columns: { content: true },
+    });
+    if (article?.content) {
+      return article.content;
+    }
     const content = await this.getBookmarkHtmlContent(
       {
         contentAssetId,

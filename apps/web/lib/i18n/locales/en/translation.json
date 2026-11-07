@@ -1066,6 +1066,22 @@
     "tabs": {
       "content": "Content",
       "details": "Details"
+    },
+    "video_article": {
+      "title": "Article",
+      "generated_badge": "Generated from video",
+      "generated_tooltip": "Written by AI from the video's speech and the creator's caption. Check important details against the video.",
+      "waiting_for_video": "Waiting for the video to download…",
+      "generating": "Turning this video into an article. This usually takes under a minute.",
+      "failed_title": "Couldn't write an article for this video",
+      "not_generated": "There's no article for this video yet.",
+      "write_article": "Write article",
+      "regenerate": "Regenerate",
+      "watch_video": "Watch the video",
+      "original_caption": "Original caption",
+      "transcript": "Full transcript",
+      "no_speech": "This video has no speech, so the article is based on the caption alone.",
+      "open_original": "Open the original"
     }
   },
   "editor": {

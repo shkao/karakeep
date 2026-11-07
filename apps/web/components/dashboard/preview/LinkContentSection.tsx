@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSession } from "@/lib/auth/client";
+import { useClientConfig } from "@/lib/clientConfig";
 import { Trans, useTranslation } from "@/lib/i18n/client";
 import { useReaderSettings } from "@/lib/readerSettings";
 import {
@@ -125,7 +126,11 @@ export default function LinkContentSection({
 }) {
   const { t } = useTranslation();
   const { settings } = useReaderSettings();
-  const availableRenderers = contentRendererRegistry.getRenderers(bookmark);
+  const clientConfig = useClientConfig();
+  const availableRenderers = contentRendererRegistry.getRenderers(
+    bookmark,
+    clientConfig,
+  );
   const defaultSection =
     bookmark.content.type === BookmarkTypes.LINK
       ? defaultLinkSection(
