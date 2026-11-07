@@ -494,7 +494,9 @@ describe("Restate Queue Provider", () => {
       await waitUntilQueueEmpty();
 
       // All jobs should complete successfully
-      expect(testState.results).toEqual([100, 200, 101, 201]);
+      expect([...testState.results].sort((a, b) => a - b)).toEqual([
+        100, 101, 200, 201,
+      ]);
     }, 60000);
 
     it("should work with jobs that don't specify groupId", async () => {

@@ -402,7 +402,7 @@ function SquareGridView({
       <DragHandle bookmark={bookmark} className="left-2 top-2" />
       <HoverActionBar bookmark={bookmark} />
       {img ? (
-        <div className="relative h-[58%] w-full shrink-0 overflow-hidden bg-muted">
+        <div className="relative h-[58%] min-h-0 w-full overflow-hidden bg-muted">
           <div className="relative size-full transition-transform duration-500 ease-out group-hover:scale-[1.04] motion-reduce:transition-none motion-reduce:group-hover:scale-100">
             {img}
           </div>
@@ -418,7 +418,7 @@ function SquareGridView({
       )}
       <div
         className={cn(
-          "flex min-h-0 flex-col gap-1.5 px-3 pb-2 pt-3",
+          "flex flex-col gap-1.5 px-3 pb-2 pt-3",
           img || !content ? "flex-1" : "shrink-0",
         )}
       >
