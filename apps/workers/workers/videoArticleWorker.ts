@@ -7,10 +7,15 @@ import { execa } from "execa";
 import { z } from "zod";
 
 import { db } from "@karakeep/db";
-import { bookmarkVideoArticles, users } from "@karakeep/db/schema";
+import {
+  bookmarkLinks,
+  bookmarkVideoArticles,
+  users,
+} from "@karakeep/db/schema";
 import {
   addLogFields,
   createAssetReadStream,
+  EmbeddingsQueue,
   OpenAIQueue,
   triggerSearchReindex,
   VideoArticleQueue,
@@ -200,6 +205,10 @@ async function runWorker(job: DequeuedJob<ZVideoArticleRequest>) {
     return;
   }
 
+  const previous = await db.query.bookmarkVideoArticles.findFirst({
+    where: eq(bookmarkVideoArticles.id, bookmarkId),
+    columns: { transcript: true },
+  });
   await db
     .insert(bookmarkVideoArticles)
     .values({ id: bookmarkId, status: "pending" })
@@ -234,11 +243,16 @@ async function runWorker(job: DequeuedJob<ZVideoArticleRequest>) {
       return;
     }
 
-    const transcript = await transcribeVideo(
-      videoPath,
-      workDir,
-      job.abortSignal,
-    );
+    // Reuse a transcript from an earlier attempt, so a retry after a failed
+    // article doesn't pay for transcription again.
+    let transcript = previous?.transcript;
+    if (transcript == null) {
+      transcript = await transcribeVideo(videoPath, workDir, job.abortSignal);
+      await db
+        .update(bookmarkVideoArticles)
+        .set({ transcript })
+        .where(eq(bookmarkVideoArticles.id, bookmarkId));
+    }
     const info = await fetchVideoInfo(jobId, url, job.abortSignal);
     if (!transcript && !info?.caption) {
       await markFailure(
@@ -272,17 +286,26 @@ async function runWorker(job: DequeuedJob<ZVideoArticleRequest>) {
       throw new Error("The model returned an empty article.");
     }
 
+    const title = extractArticleTitle(content);
     await db
       .update(bookmarkVideoArticles)
       .set({
         status: "success",
-        title: extractArticleTitle(content),
+        title,
         content,
         caption: info?.caption ?? null,
         transcript,
         error: null,
       })
       .where(eq(bookmarkVideoArticles.id, bookmarkId));
+    if (title) {
+      // The generated title replaces the crawled one, which for short videos is
+      // usually generic. A title the user set on the bookmark still wins.
+      await db
+        .update(bookmarkLinks)
+        .set({ title })
+        .where(eq(bookmarkLinks.id, bookmarkId));
+    }
     logger.info(
       `[VideoArticle][${jobId}] Wrote a ${content.length}-character article from a ${transcript.length}-character transcript.`,
     );
@@ -290,7 +313,15 @@ async function runWorker(job: DequeuedJob<ZVideoArticleRequest>) {
     // Tags, summary and search now read the article (see
     // Bookmark.getBookmarkPlainTextContent), so refresh them.
     const enqueueOpts = { priority: job.priority, groupId: userId };
-    await OpenAIQueue.enqueue({ bookmarkId, type: "tag" }, enqueueOpts);
+    // Same order as after a crawl: embeddings run tagging when they finish.
+    if (serverConfig.embedding.enableAutoIndexing) {
+      await EmbeddingsQueue.enqueue(
+        { bookmarkId, type: "embed", runTaggingOnComplete: true },
+        enqueueOpts,
+      );
+    } else {
+      await OpenAIQueue.enqueue({ bookmarkId, type: "tag" }, enqueueOpts);
+    }
     await OpenAIQueue.enqueue({ bookmarkId, type: "summarize" }, enqueueOpts);
     await triggerSearchReindex(bookmarkId, enqueueOpts);
   } finally {

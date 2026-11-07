@@ -2,7 +2,11 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import serverConfig from "@karakeep/shared/config";
 
-import { prepareYtDlpArguments } from "./videoWorker";
+import {
+  prepareYtDlpArguments,
+  redactYtDlpArguments,
+  videoContentType,
+} from "./videoWorker";
 
 vi.mock("@karakeep/db", async (original) => {
   const actual = await original<typeof import("@karakeep/db")>();
@@ -23,7 +27,9 @@ describe("prepareYtDlpArguments", () => {
 
     const args = prepareYtDlpArguments(URL, undefined, "/tmp/asset");
 
-    expect(args).toContain("best[filesize<?50M]");
+    expect(args).toContain(
+      "best[filesize<?50M]/best*[acodec!=none][filesize<?50M]",
+    );
     expect(args[args.indexOf("--max-filesize") + 1]).toBe("50M");
   });
 
@@ -34,5 +40,45 @@ describe("prepareYtDlpArguments", () => {
 
     expect(args).not.toContain("-f");
     expect(args).not.toContain("--max-filesize");
+  });
+});
+
+test("prints the final file path so sidecar files are never picked", () => {
+  const args = prepareYtDlpArguments(URL, undefined, "/tmp/asset");
+  expect(args).toEqual(
+    expect.arrayContaining(["--no-simulate", "--print", "after_move:filepath"]),
+  );
+});
+
+test("redacts proxy and cookie values from logged arguments", () => {
+  expect(
+    redactYtDlpArguments([
+      URL,
+      "--cookies",
+      "/secrets/cookies.txt",
+      "--proxy",
+      "http://user:pass@proxy:8080",
+      "-o",
+      "/tmp/asset",
+    ]),
+  ).toEqual([
+    URL,
+    "--cookies",
+    "[redacted]",
+    "--proxy",
+    "[redacted]",
+    "-o",
+    "/tmp/asset",
+  ]);
+});
+
+describe("videoContentType", () => {
+  test.each([
+    ["mov,mp4,m4a,3gp,3g2,mj2", "/tmp/a.mp4", "video/mp4"],
+    ["matroska,webm", "/tmp/a.webm", "video/webm"],
+    ["matroska,webm", "/tmp/a.mkv", "video/x-matroska"],
+    ["", "/tmp/a", "video/mp4"],
+  ])("maps %s at %s to %s", (format, file, expected) => {
+    expect(videoContentType(format, file)).toBe(expected);
   });
 });

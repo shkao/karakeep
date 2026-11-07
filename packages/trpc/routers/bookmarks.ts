@@ -588,6 +588,17 @@ export const bookmarksAppRouter = router({
         }> = {};
         if (input.url) {
           linkUpdateData.url = input.url.trim();
+          const current = tx
+            .select({ url: bookmarkLinks.url })
+            .from(bookmarkLinks)
+            .where(eq(bookmarkLinks.id, input.bookmarkId))
+            .get();
+          if (current && current.url !== linkUpdateData.url) {
+            // The article was written from the old URL's video.
+            tx.delete(bookmarkVideoArticles)
+              .where(eq(bookmarkVideoArticles.id, input.bookmarkId))
+              .run();
+          }
         }
         if (input.description !== undefined) {
           linkUpdateData.description = input.description;
