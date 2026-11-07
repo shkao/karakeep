@@ -1,0 +1,29 @@
+name: Feature
+description: A new capability or a change to how something works.
+title: "feat(<scope>): "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What the user can do afterwards, and why it matters.
+    validations:
+      required: true
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Decisions
+      description: Choices already made, and open questions each with a proposed default.
+  - type: textarea
+    id: tasks
+    attributes:
+      label: Tasks
+      description: A checklist, with file:line where known.
+      value: |
+        - [ ]
+  - type: textarea
+    id: out_of_scope
+    attributes:
+      label: Out of scope
+      description: What this deliberately leaves for later.

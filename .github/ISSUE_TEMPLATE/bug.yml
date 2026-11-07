@@ -1,0 +1,29 @@
+name: Bug
+description: Something that worked, or should work, is broken.
+title: "fix(<scope>): "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What's wrong, where (file:line, URL, workflow) and the evidence (error, log line, failing test).
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+      description: What should happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Proposed fix
+      description: Options you see, with the one you'd pick first. Leave empty if unknown.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: The check that proves it's fixed, ideally one command or one observable result.

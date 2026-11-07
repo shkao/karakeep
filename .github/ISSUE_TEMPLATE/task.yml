@@ -1,0 +1,21 @@
+name: Task
+description: CI, tests, docs, refactoring or upkeep with no user-facing change.
+title: "chore(<scope>): "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What's wrong or missing today, with the evidence.
+    validations:
+      required: true
+  - type: textarea
+    id: fix
+    attributes:
+      label: Proposed fix
+      description: Options you see, with the one you'd pick first.
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: The check that proves it's finished.
