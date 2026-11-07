@@ -4,7 +4,6 @@ import { beforeEach, expect, test, vi } from "vitest";
 
 import { db } from "@karakeep/db";
 import { bookmarkLinks, bookmarks, users } from "@karakeep/db/schema";
-import { StorageQuotaError } from "@karakeep/shared-server";
 import { BookmarkTypes } from "@karakeep/shared/types/bookmarks";
 import serverConfig from "@karakeep/shared/config";
 
@@ -122,18 +121,17 @@ test("replaces old image files and records together on recrawl", async () => {
   expect(state.files.has(current[0].id)).toBe(true);
 });
 
-test("keeps the previous capture when a changed image cannot fit the quota", async () => {
+test("saves new text but keeps previous images when a changed image cannot fit the quota", async () => {
   await capture();
-  const before = await db.query.bookmarkLinks.findFirst();
   const previous = await db.query.assets.findFirst();
   await db
     .update(users)
     .set({ storageQuota: previous!.size })
     .where(eq(users.id, "owner"));
   state.html = '<img src="https://example.com/new-chart.png">';
-  await expect(capture()).rejects.toBeInstanceOf(StorageQuotaError);
-  expect((await db.query.bookmarkLinks.findFirst())?.htmlContent).toBe(
-    before?.htmlContent,
+  await capture();
+  expect((await db.query.bookmarkLinks.findFirst())?.htmlContent).toContain(
+    'src="https://example.com/new-chart.png"',
   );
   expect((await db.query.assets.findMany()).map((asset) => asset.id)).toEqual([
     previous!.id,
@@ -160,15 +158,21 @@ test("cleans staged images when the crawl is aborted", async () => {
   expect([...state.files.keys()]).toEqual(["archive"]);
 });
 
-test("checks the combined image and HTML storage cost before committing", async () => {
+test("saves the article without images when they and the HTML exceed the quota", async () => {
   state.html = `<p>${"Article text. ".repeat(600)}</p><img src="https://example.com/chart.png">`;
   await db
     .update(users)
     .set({ storageQuota: Buffer.byteLength(state.html) + 150 })
     .where(eq(users.id, "owner"));
-  await expect(capture()).rejects.toBeInstanceOf(StorageQuotaError);
-  expect(await db.query.assets.findMany()).toHaveLength(0);
-  expect([...state.files.keys()]).toEqual(["archive"]);
+  await capture();
+  const saved = await db.query.assets.findMany();
+  expect(saved.map((asset) => asset.assetType)).toEqual(["linkHtmlContent"]);
+  expect([...state.files.keys()].sort()).toEqual(
+    ["archive", saved[0].id].sort(),
+  );
+  expect(state.files.get(saved[0].id)?.toString()).toContain(
+    'src="https://example.com/chart.png"',
+  );
 });
 
 test("reuses the previous saved image when its download fails", async () => {

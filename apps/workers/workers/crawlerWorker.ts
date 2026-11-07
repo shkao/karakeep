@@ -1104,6 +1104,10 @@ export const crawlAndParseUrl = traced(
       }
       return previous.id;
     };
+    const originalContent = readableContent?.content;
+    // Set when quota keeps a new image from being stored, so the previous
+    // capture's images survive instead of being replaced by remote URLs.
+    let keepPreviousImages = false;
     let contentCommitted = false;
     try {
       if (readableContent) {
@@ -1187,15 +1191,10 @@ export const crawlAndParseUrl = traced(
               log.warn(
                 `Failed to save article image from "${truncateUrl(imageUrl)}": ${error}`,
               );
-              const previousId = reusePreviousImage(imageUrl);
-              if (
-                !previousId &&
-                error instanceof StorageQuotaError &&
-                previousArticleImages.length > 0
-              ) {
-                throw error;
+              if (error instanceof StorageQuotaError) {
+                keepPreviousImages = true;
               }
-              return previousId;
+              return reusePreviousImage(imageUrl);
             }
           },
           4,
@@ -1232,20 +1231,12 @@ export const crawlAndParseUrl = traced(
       }
       abortSignal.throwIfAborted();
 
-      const htmlContentAssetInfo = await storeHtmlContent(
+      let htmlContentAssetInfo = await storeHtmlContent(
         ctx,
         readableContent?.content,
       );
       if (htmlContentAssetInfo.result === "stored") {
         stagedAssetIds.add(htmlContentAssetInfo.assetId);
-      }
-      if (
-        readableContent?.content &&
-        htmlContentAssetInfo.result === "not_stored"
-      ) {
-        throw new Error(
-          "Could not store article content; keeping the previous capture.",
-        );
       }
       abortSignal.throwIfAborted();
       let imageAssetInfo: DBAssetType | null = null;
@@ -1265,7 +1256,7 @@ export const crawlAndParseUrl = traced(
       }
       abortSignal.throwIfAborted();
 
-      if (articleImageAssets.length > 0) {
+      if (newArticleImageIds.length > 0) {
         const stagedBytes =
           articleImageAssets
             .filter((asset) => newArticleImageIds.includes(asset.id))
@@ -1276,8 +1267,61 @@ export const crawlAndParseUrl = traced(
           (htmlContentAssetInfo.result === "stored"
             ? htmlContentAssetInfo.size
             : 0);
-        await QuotaService.checkStorageQuota(db, userId, stagedBytes);
+        const { error: quotaError } = await tryCatch(
+          QuotaService.checkStorageQuota(db, userId, stagedBytes),
+        );
+        if (quotaError && !(quotaError instanceof StorageQuotaError)) {
+          throw quotaError;
+        }
         abortSignal.throwIfAborted();
+        if (
+          readableContent &&
+          originalContent &&
+          (quotaError || htmlContentAssetInfo.result === "not_stored")
+        ) {
+          // Not enough storage for the new images: save the article without
+          // them rather than failing the crawl.
+          log.warn(
+            "Not enough storage for article images; saving the article with remote image URLs.",
+          );
+          keepPreviousImages = true;
+          const droppedIds = [...newArticleImageIds];
+          if (htmlContentAssetInfo.result === "stored") {
+            droppedIds.push(htmlContentAssetInfo.assetId);
+          }
+          for (const id of droppedIds) {
+            stagedAssetIds.delete(id);
+          }
+          await Promise.all(
+            droppedIds.map((id) => silentDeleteAsset(userId, id)),
+          );
+          articleImageAssets.splice(
+            0,
+            articleImageAssets.length,
+            ...articleImageAssets.filter(
+              (asset) => !newArticleImageIds.includes(asset.id),
+            ),
+          );
+          readableContent.content = await captureArticleImages(
+            originalContent,
+            async (imageUrl) => reusePreviousImage(imageUrl),
+          );
+          htmlContentAssetInfo = await storeHtmlContent(
+            ctx,
+            readableContent.content,
+          );
+          if (htmlContentAssetInfo.result === "stored") {
+            stagedAssetIds.add(htmlContentAssetInfo.assetId);
+          }
+          abortSignal.throwIfAborted();
+        }
+      }
+      if (keepPreviousImages) {
+        for (const previous of previousArticleImages) {
+          if (!articleImageAssets.some((asset) => asset.id === previous.id)) {
+            articleImageAssets.push(previous);
+          }
+        }
       }
 
       // Phase 2: Write content and asset references.
