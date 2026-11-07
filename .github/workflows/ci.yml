@@ -70,7 +70,8 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
   tests:
-    runs-on: ubuntu-latest
+    # Playwright 1.59 can't install Chromium on ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4.3.1
         with:
