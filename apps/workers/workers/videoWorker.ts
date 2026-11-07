@@ -73,7 +73,7 @@ export class VideoWorker {
   }
 }
 
-function prepareYtDlpArguments(
+export function prepareYtDlpArguments(
   url: string,
   proxy: string | undefined,
   assetPath: string,
@@ -83,9 +83,14 @@ function prepareYtDlpArguments(
   // network policy that blocks internal/private targets.
   const ytDlpArguments = [url];
   if (serverConfig.crawler.maxVideoDownloadSize > 0) {
+    const maxSize = `${serverConfig.crawler.maxVideoDownloadSize}M`;
+    // Some sites, such as Instagram, don't report format sizes. `<?` keeps
+    // those formats, and --max-filesize stops a download that turns out larger.
     ytDlpArguments.push(
       "-f",
-      `best[filesize<${serverConfig.crawler.maxVideoDownloadSize}M]`,
+      `best[filesize<?${maxSize}]`,
+      "--max-filesize",
+      maxSize,
     );
   }
 
