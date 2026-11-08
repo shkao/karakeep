@@ -91,15 +91,25 @@ describe("verified Ollama summaries", () => {
     );
   });
 
-  it("rejects references to blank source lines", async () => {
-    chat.mockResolvedValueOnce(response(audit()));
+  it("numbers only non-blank lines so every citable ID is evidence", async () => {
+    const article = "Almost all birds returned.\n\n \nThree remain missing.\n";
+    chat.mockResolvedValueOnce(response(audit("supported", [2])));
+    const result = await summarizeWithOllama(article, "English", [], config);
+    expect(result?.response).toBe("Almost all birds returned.");
+    const request = chat.mock.calls[1][0];
+    expect(JSON.parse(request.messages[1].content).source).toBe(
+      "[S1] Almost all birds returned.\n\n \n[S2] Three remain missing.\n",
+    );
+    expect(
+      request.format.properties.checks.items.properties.source_ids.items
+        .maximum,
+    ).toBe(2);
+  });
+
+  it("rejects repeated evidence IDs", async () => {
+    chat.mockResolvedValueOnce(response(audit("supported", [1, 1])));
     await expect(
-      summarizeWithOllama(
-        "\nAlmost all birds returned.",
-        "English",
-        [],
-        config,
-      ),
+      summarizeWithOllama(source, "English", [], config),
     ).rejects.toThrow(/invalid evidence/i);
   });
 
