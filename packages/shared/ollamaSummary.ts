@@ -131,9 +131,11 @@ export async function summarizeWithOllama(
 
   // Retain the original line delimiters. IDs reference exact source slices,
   // avoiding model-written quotations that paraphrase or alter whitespace.
-  const sourceUnits = source.split(/(?<=\n)/u);
-  const labeledSource = sourceUnits
-    .map((text, index) => `[S${index + 1}] ${text}`)
+  // Blank lines stay in the source but get no ID, so every ID is evidence.
+  let sourceCount = 0;
+  const labeledSource = source
+    .split(/(?<=\n)/u)
+    .map((text) => (text.trim() ? `[S${++sourceCount}] ${text}` : text))
     .join("");
 
   const draftMessages: Message[] = [
@@ -156,7 +158,7 @@ export async function summarizeWithOllama(
       }),
     },
   ];
-  const finalAuditSchema = auditSchema(sourceUnits.length);
+  const finalAuditSchema = auditSchema(sourceCount);
   const outputCap = (cap: number) =>
     config.maxOutputTokens > 0 ? Math.min(cap, config.maxOutputTokens) : cap;
   const draftOutputTokens = outputCap(768);
@@ -264,10 +266,7 @@ export async function summarizeWithOllama(
         `Summary verification failed: sentence ${check.sentence} is ${check.status}`,
       );
     }
-    if (
-      new Set(check.source_ids).size !== check.source_ids.length ||
-      check.source_ids.some((id) => !sourceUnits[id - 1].trim())
-    ) {
+    if (new Set(check.source_ids).size !== check.source_ids.length) {
       throw new Error(
         `Summary verification failed: invalid evidence for sentence ${check.sentence}`,
       );
