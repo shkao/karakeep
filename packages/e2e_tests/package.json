@@ -10,7 +10,7 @@
     "format:fix": "oxfmt --ignore-path=../../.gitignore --ignore-path=./.gitignore .",
     "lint": "oxlint --ignore-path=../../.gitignore --ignore-pattern='setup/docker-logs/**' .",
     "lint:fix": "oxlint --ignore-path=../../.gitignore --ignore-pattern='setup/docker-logs/**' . --fix",
-    "test": "vitest run",
+    "test": "vitest run tests/workers/video.test.ts && E2E_TEST_NO_BUILD=1 E2E_VIDEO_DOWNLOAD=false vitest run --exclude tests/workers/video.test.ts",
     "test:web": "vitest run tests/web",
     "test:watch": "vitest",
     "test:no-build": "E2E_TEST_NO_BUILD=1 vitest run"
