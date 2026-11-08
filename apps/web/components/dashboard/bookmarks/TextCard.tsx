@@ -8,10 +8,8 @@ import { cn } from "@/lib/utils";
 
 import type { ZBookmarkTypeText } from "@karakeep/shared/types/bookmarks";
 import { getAssetUrl } from "@karakeep/shared/utils/assetUtils";
-import { getSourceUrl } from "@karakeep/shared/utils/bookmarkUtils";
 
 import { BookmarkLayoutAdaptingCard } from "./BookmarkLayoutAdaptingCard";
-import FooterLinkURL from "./FooterLinkURL";
 
 export default function TextCard({
   bookmark,
@@ -31,11 +29,6 @@ export default function TextCard({
           <BookmarkMarkdownComponent readOnly={true}>
             {bookmark}
           </BookmarkMarkdownComponent>
-        }
-        footer={
-          getSourceUrl(bookmark) && (
-            <FooterLinkURL url={getSourceUrl(bookmark)} />
-          )
         }
         bookmark={bookmark}
         className={className}

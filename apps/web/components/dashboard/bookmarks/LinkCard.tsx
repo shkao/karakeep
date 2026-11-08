@@ -8,12 +8,10 @@ import type { ZBookmarkTypeLink } from "@karakeep/shared/types/bookmarks";
 import {
   getBookmarkLinkImageUrl,
   getBookmarkTitle,
-  getSourceUrl,
   isBookmarkStillCrawling,
 } from "@karakeep/shared/utils/bookmarkUtils";
 
 import { BookmarkLayoutAdaptingCard } from "./BookmarkLayoutAdaptingCard";
-import FooterLinkURL from "./FooterLinkURL";
 
 const useOnClickUrl = (bookmark: ZBookmarkTypeLink) => {
   const userSettings = useUserSettings();
@@ -131,7 +129,6 @@ export default function LinkCard({
   return (
     <BookmarkLayoutAdaptingCard
       title={<LinkTitle bookmark={bookmarkLink} />}
-      footer={<FooterLinkURL url={getSourceUrl(bookmarkLink)} />}
       bookmark={bookmarkLink}
       image={(layout, className) => (
         <LinkImage
