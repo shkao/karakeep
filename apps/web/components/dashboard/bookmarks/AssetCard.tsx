@@ -7,10 +7,8 @@ import { FileText } from "lucide-react";
 
 import type { ZBookmarkTypeAsset } from "@karakeep/shared/types/bookmarks";
 import { getAssetUrl } from "@karakeep/shared/utils/assetUtils";
-import { getSourceUrl } from "@karakeep/shared/utils/bookmarkUtils";
 
 import { BookmarkLayoutAdaptingCard } from "./BookmarkLayoutAdaptingCard";
-import FooterLinkURL from "./FooterLinkURL";
 
 function AssetImage({
   bookmark,
@@ -79,11 +77,6 @@ export default function AssetCard({
   return (
     <BookmarkLayoutAdaptingCard
       title={bookmarkedAsset.title ?? bookmarkedAsset.content.fileName}
-      footer={
-        getSourceUrl(bookmarkedAsset) && (
-          <FooterLinkURL url={getSourceUrl(bookmarkedAsset)} />
-        )
-      }
       bookmark={bookmarkedAsset}
       className={className}
       bookmarkIndex={bookmarkIndex}
