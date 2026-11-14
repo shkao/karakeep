@@ -15,6 +15,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSession } from "@/lib/auth/client";
+import { useClientConfig } from "@/lib/clientConfig";
 import { useTranslation } from "@/lib/i18n/client";
 import { useReaderSettings } from "@/lib/readerSettings";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -112,7 +113,17 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const queryClient = useQueryClient();
   const { settings } = useReaderSettings();
   const { data: session } = useSession();
+  const clientConfig = useClientConfig();
   const isOwner = session?.user?.id === bookmark.userId;
+  // Without an article, the original player is still worth showing.
+  const Player = [youTubeRenderer, tikTokRenderer].find((renderer) =>
+    renderer.canRender(bookmark, clientConfig),
+  )?.component;
+  const playerFallback = Player ? (
+    <div className="mt-6 aspect-video w-full overflow-hidden rounded-md">
+      <Player bookmark={bookmark} />
+    </div>
+  ) : null;
 
   const videoAssetId =
     bookmark.content.type === BookmarkTypes.LINK
@@ -156,7 +167,12 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
     body = <GeneratingState message={t("preview.video_article.generating")} />;
   } else if (!article && !videoAssetId) {
     body = (
-      <GeneratingState message={t("preview.video_article.waiting_for_video")} />
+      <>
+        <GeneratingState
+          message={t("preview.video_article.waiting_for_video")}
+        />
+        {playerFallback}
+      </>
     );
   } else if (!article || article.status === "failure") {
     body = (
@@ -180,6 +196,12 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
           </Button>
         )}
       </Alert>
+    );
+    body = (
+      <>
+        {body}
+        {playerFallback}
+      </>
     );
   } else if (article.status === "pending" || !article.content) {
     body = <GeneratingState message={t("preview.video_article.generating")} />;
