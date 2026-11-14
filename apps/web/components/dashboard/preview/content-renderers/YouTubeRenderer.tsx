@@ -42,8 +42,9 @@ function YouTubeRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const embedUrl = `https://www.youtube.com/embed/${videoId}`;
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
-      <div className="absolute inset-0 h-full w-full">
+    // Keep the player 16:9; filling a tall pane crops the video.
+    <div className="flex h-full w-full items-center justify-center overflow-hidden">
+      <div className="aspect-video max-h-full w-full">
         <iframe
           src={embedUrl}
           title="YouTube video player"
