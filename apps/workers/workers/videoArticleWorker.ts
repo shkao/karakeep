@@ -72,8 +72,9 @@ export class VideoArticleWorker {
   }
 }
 
-function formatMinutes(seconds: number): string {
-  const minutes = Math.max(1, Math.round(seconds / 60));
+// Round the video's length up, so an over-limit video never reads as fitting.
+function formatMinutes(seconds: number, round = Math.round): string {
+  const minutes = Math.max(1, round(seconds / 60));
   return `${minutes} minute${minutes === 1 ? "" : "s"}`;
 }
 
@@ -239,7 +240,7 @@ async function runWorker(job: DequeuedJob<ZVideoArticleRequest>) {
       // Retrying can't help, so record the reason and stop.
       await markFailure(
         bookmarkId,
-        `The video is ${formatMinutes(duration)} long. Articles are only written for videos up to ${formatMinutes(maxDuration)}.`,
+        `The video is ${formatMinutes(duration, Math.ceil)} long. Articles are only written for videos up to ${formatMinutes(maxDuration)}.`,
       );
       return;
     }
