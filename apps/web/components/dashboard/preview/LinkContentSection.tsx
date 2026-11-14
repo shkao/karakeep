@@ -29,6 +29,7 @@ import {
   FileText,
   Info,
   LayoutPanelTop,
+  ScrollText,
   Video,
 } from "lucide-react";
 import { useQueryState } from "nuqs";
@@ -45,6 +46,7 @@ import { contentRendererRegistry } from "./content-renderers";
 import ReaderSettingsPopover from "./ReaderSettingsPopover";
 import ReaderView from "./ReaderView";
 import SavedPageOverview from "./SavedPageOverview";
+import SummaryReader from "./SummaryReader";
 
 function CustomRendererErrorFallback({ error }: { error: Error }) {
   return (
@@ -134,11 +136,13 @@ export default function LinkContentSection({
   const videoArticleRenderer = availableRenderers.find(
     (renderer) => renderer.id === "video-article",
   );
-  const instagramArticle =
-    videoArticleRenderer &&
-    availableRenderers.some((renderer) => renderer.id === "instagram");
-  let defaultSection = instagramArticle
-    ? "cached"
+  const isInstagram = availableRenderers.some(
+    (renderer) => renderer.id === "instagram",
+  );
+  const instagramArticle = videoArticleRenderer && isInstagram;
+  // Instagram's page and embed don't read well; open on the summary.
+  let defaultSection = isInstagram
+    ? "summary"
     : (availableRenderers[0]?.id ?? "cached");
   if (
     availableRenderers.length === 0 &&
@@ -174,6 +178,8 @@ export default function LinkContentSection({
         <RendererComponent bookmark={bookmark} />
       </ErrorBoundary>
     );
+  } else if (section === "summary" && isInstagram) {
+    content = <SummaryReader bookmark={bookmark} readOnly={!isOwner} />;
   } else if (section === "cached" && instagramArticle) {
     const RendererComponent = videoArticleRenderer.component;
     content = (
@@ -240,6 +246,14 @@ export default function LinkContentSection({
                 })}
 
               {/* Default renderers */}
+              {isInstagram && (
+                <SelectItem value="summary">
+                  <div className="flex items-center">
+                    <ScrollText className="mr-2 h-4 w-4" />
+                    {t("common.summary")}
+                  </div>
+                </SelectItem>
+              )}
               <SelectItem value="overview">
                 <div className="flex items-center">
                   <LayoutPanelTop className="mr-2 h-4 w-4" />
@@ -297,6 +311,7 @@ export default function LinkContentSection({
             </SelectGroup>
           </SelectContent>
         </Select>
+        {section === "summary" && isInstagram && <ReaderSettingsPopover />}
         {section === "cached" && (
           <>
             <ReaderSettingsPopover />
