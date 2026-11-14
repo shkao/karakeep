@@ -1,6 +1,6 @@
 import type { BrowserContext } from "patchright";
 
-const EMBED_IMAGE_TIMEOUT_MS = 15_000;
+const EMBED_IMAGE_TIMEOUT_MS = 8_000;
 
 /**
  * The public embed page for an Instagram post or reel, or null for any other
@@ -34,13 +34,24 @@ export function instagramEmbedUrl(url: string): string | null {
 export async function fetchInstagramCoverUrl(
   context: BrowserContext,
   url: string,
+  abortSignal: AbortSignal,
 ): Promise<string | null> {
   const embedUrl = instagramEmbedUrl(url);
-  if (!embedUrl) {
+  if (!embedUrl || abortSignal.aborted) {
     return null;
   }
   const page = await context.newPage();
+  // Closing the page makes the pending goto or wait reject at once.
+  const onAbort = () => void page.close().catch(() => undefined);
+  abortSignal.addEventListener("abort", onAbort, { once: true });
   try {
+    // Only Instagram's own pages and CDN may load; nothing else on the way.
+    await page.route("**/*", (route) => {
+      const host = new URL(route.request().url()).hostname;
+      return /(^|\.)(instagram\.com|cdninstagram\.com|fbcdn\.net)$/.test(host)
+        ? route.continue()
+        : route.abort();
+    });
     await page.goto(embedUrl, {
       waitUntil: "domcontentloaded",
       timeout: EMBED_IMAGE_TIMEOUT_MS,
@@ -55,6 +66,7 @@ export async function fetchInstagramCoverUrl(
   } catch {
     return null;
   } finally {
+    abortSignal.removeEventListener("abort", onAbort);
     await page.close().catch(() => undefined);
   }
 }

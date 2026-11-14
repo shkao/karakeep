@@ -5,7 +5,13 @@ import { Response } from "node-fetch";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import { db } from "@karakeep/db";
-import { bookmarkLinks, bookmarks, users } from "@karakeep/db/schema";
+import {
+  assets,
+  AssetTypes,
+  bookmarkLinks,
+  bookmarks,
+  users,
+} from "@karakeep/db/schema";
 import { BookmarkTypes } from "@karakeep/shared/types/bookmarks";
 import serverConfig from "@karakeep/shared/config";
 
@@ -75,13 +81,13 @@ const context = (abort: AbortController): CrawlContext => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 });
 
-async function capture(abort = controller()) {
+async function capture(abort = controller(), screenshotAssetId?: string) {
   const link = await db.query.bookmarkLinks.findFirst({
     where: eq(bookmarkLinks.id, "article"),
   });
   return crawlAndParseUrl(context(abort), {
     oldAssets: {
-      screenshotAssetId: undefined,
+      screenshotAssetId,
       pdfAssetId: undefined,
       imageAssetId: undefined,
       contentAssetId: link?.contentAssetId ?? undefined,
@@ -317,7 +323,17 @@ test("marks a first crawl that gets a challenge page as blocked", async () => {
   // A later recrawl that is still blocked may replace the stored challenge
   // page, since there is no article to keep.
   state.html = "<p>环境异常</p><p>第二次验证页。</p>";
-  expect((await capture()).blocked).toBe(true);
+  await db.insert(assets).values({
+    id: "old-shot",
+    bookmarkId: "article",
+    userId: "owner",
+    assetType: AssetTypes.LINK_SCREENSHOT,
+  });
+  expect((await capture(controller(), "old-shot")).blocked).toBe(true);
+  // A screenshot of the earlier verification page isn't kept beside it.
+  expect(
+    await db.query.assets.findFirst({ where: eq(assets.id, "old-shot") }),
+  ).toBeUndefined();
   expect((await db.query.bookmarkLinks.findFirst())?.htmlContent).toContain(
     "第二次验证页",
   );

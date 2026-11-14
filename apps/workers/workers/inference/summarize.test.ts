@@ -84,10 +84,21 @@ test("never summarizes a saved challenge page", async () => {
   expect(await storedSummary()).toBeNull();
 });
 
-test("leaves a short caption with no body unsummarized", async () => {
-  await seed({ description: "If you can't decide, try this experiment." });
+test("leaves a short Instagram caption with no body unsummarized", async () => {
+  await seed({
+    url: "https://www.instagram.com/p/abc/",
+    description: "If you can't decide, try this experiment.",
+  });
 
   await runSummarization("b", job, inferenceClient);
 
   expect(summarizeContent).not.toHaveBeenCalled();
+});
+
+test("still summarizes a short description on other sites", async () => {
+  await seed({ description: "A short post on another site." });
+
+  await runSummarization("b", job, inferenceClient);
+
+  expect(summarizeContent).toHaveBeenCalledOnce();
 });

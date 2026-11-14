@@ -32,6 +32,7 @@ import {
   ScrollText,
   Video,
 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { useQueryState } from "nuqs";
 import { ErrorBoundary } from "react-error-boundary";
 
@@ -40,6 +41,7 @@ import {
   ZBookmark,
   ZBookmarkedLink,
 } from "@karakeep/shared/types/bookmarks";
+import { useTRPC } from "@karakeep/shared-react/trpc";
 import { READER_FONT_FAMILIES } from "@karakeep/shared/types/readers";
 
 import { contentRendererRegistry } from "./content-renderers";
@@ -140,10 +142,31 @@ export default function LinkContentSection({
     (renderer) => renderer.id === "instagram",
   );
   const instagramArticle = videoArticleRenderer && isInstagram;
+  const hasPlayer = availableRenderers.some(
+    (renderer) => renderer.id === "youtube" || renderer.id === "tiktok",
+  );
+  const api = useTRPC();
+  const { data: videoArticle, isPending: videoArticlePending } = useQuery(
+    api.bookmarks.getVideoArticle.queryOptions(
+      { bookmarkId: bookmark.id },
+      { enabled: !!videoArticleRenderer && hasPlayer },
+    ),
+  );
+  // Without a usable article (too long, failed, never made), open on the
+  // player rather than an error.
+  const playerFirst =
+    !!videoArticleRenderer &&
+    hasPlayer &&
+    !videoArticlePending &&
+    (!videoArticle || videoArticle.status === "failure");
   // Instagram's page and embed don't read well; open on the summary.
   let defaultSection = isInstagram
     ? "summary"
-    : (availableRenderers[0]?.id ?? "cached");
+    : playerFirst
+      ? (availableRenderers.find(
+          (renderer) => renderer.id === "youtube" || renderer.id === "tiktok",
+        )?.id ?? "cached")
+      : (availableRenderers[0]?.id ?? "cached");
   if (
     availableRenderers.length === 0 &&
     bookmark.content.type === BookmarkTypes.LINK
@@ -160,17 +183,27 @@ export default function LinkContentSection({
   const [requestedSection, setSection] = useQueryState("section", {
     defaultValue: defaultSection,
   });
-  // A stale or hand-typed ?section= would leave the view picker blank.
-  const knownSections = new Set([
-    ...availableRenderers.map((renderer) => renderer.id),
-    ...(isInstagram ? ["summary"] : []),
-    "cached",
-    "archive",
-    "video",
-    "pdf",
-    "screenshot",
-    "overview",
-  ]);
+  // A stale or hand-typed ?section= would leave the view picker blank or
+  // open a view with nothing in it; only accept what the picker offers.
+  const link =
+    bookmark.content.type === BookmarkTypes.LINK ? bookmark.content : null;
+  const knownSections = new Set(
+    [
+      ...availableRenderers
+        .map((renderer) => renderer.id)
+        .filter((id) => !instagramArticle || id !== "video-article"),
+      isInstagram && "summary",
+      "overview",
+      (instagramArticle ||
+        (link?.readerViewStatus !== "unavailable" && !link?.captureBlocked)) &&
+        "cached",
+      link?.screenshotAssetId && "screenshot",
+      link?.pdfAssetId && "pdf",
+      (link?.fullPageArchiveAssetId || link?.precrawledArchiveAssetId) &&
+        "archive",
+      link?.videoAssetId && "video",
+    ].filter((value): value is string => !!value),
+  );
   const section = knownSections.has(requestedSection)
     ? requestedSection
     : defaultSection;

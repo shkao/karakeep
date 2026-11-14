@@ -123,6 +123,14 @@ function isInstagramUrl(url: string) {
   }
 }
 
+function hostnameOf(url: string) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
 export function getBookmarkTitle(bookmark: ZBookmark) {
   let title: string | null = null;
   switch (bookmark.content.type) {
@@ -130,7 +138,7 @@ export function getBookmarkTitle(bookmark: ZBookmark) {
       // A blocked capture's title is the verification page's, not the
       // article's.
       title = bookmark.content.captureBlocked
-        ? bookmark.content.url
+        ? hostnameOf(bookmark.content.url)
         : (bookmark.content.title ?? bookmark.content.url);
       if (
         bookmark.content.title &&

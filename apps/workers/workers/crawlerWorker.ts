@@ -1427,6 +1427,14 @@ export const crawlAndParseUrl = traced(
             txn,
           );
           assetIdsToDelete.push(oldAssets.screenshotAssetId);
+        } else if (renderIsChallengePage && oldAssets.screenshotAssetId) {
+          // This capture replaces the page, and its screenshot wasn't kept;
+          // the old one would sit beside a verification page.
+          txn
+            .delete(assets)
+            .where(eq(assets.id, oldAssets.screenshotAssetId))
+            .run();
+          assetIdsToDelete.push(oldAssets.screenshotAssetId);
         }
         if (pdfAssetInfo) {
           updateAsset(
@@ -1660,11 +1668,16 @@ export const crawlPage = traced(
         activePage,
         forceStorePdf,
       );
-      const coverImageUrl = await fetchInstagramCoverUrl(context, url);
+      const statusCode = mainDocumentStatus ?? response?.status() ?? 0;
+      // An error or block page has no post to take a cover from.
+      const coverImageUrl =
+        statusCode < 400
+          ? await fetchInstagramCoverUrl(context, url, abortSignal)
+          : null;
 
       return {
         htmlContent,
-        statusCode: mainDocumentStatus ?? response?.status() ?? 0,
+        statusCode,
         screenshot,
         pdf,
         url: activePage.url(),

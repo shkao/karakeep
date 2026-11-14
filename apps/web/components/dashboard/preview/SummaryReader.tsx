@@ -53,9 +53,8 @@ export default function SummaryReader({
               alt=""
               fill
               unoptimized
-              // It's the first thing on the page; don't wait on lazy loading.
-              loading="eager"
-              fetchPriority="high"
+              // It's the first thing on the page; fetch it at once.
+              preload
               className="object-contain"
               sizes="384px"
             />

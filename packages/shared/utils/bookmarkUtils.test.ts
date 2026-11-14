@@ -71,7 +71,7 @@ describe("getBookmarkTitle", () => {
         captureBlocked: true,
       },
     } as unknown as ZBookmark;
-    expect(getBookmarkTitle(blocked)).toBe("https://mp.weixin.qq.com/s/abc");
+    expect(getBookmarkTitle(blocked)).toBe("mp.weixin.qq.com");
     expect(getBookmarkTitle({ ...blocked, title: "Real title" })).toBe(
       "Real title",
     );
