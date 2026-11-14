@@ -56,7 +56,10 @@ export async function fetchInstagramCoverUrl(
       waitUntil: "domcontentloaded",
       timeout: EMBED_IMAGE_TIMEOUT_MS,
     });
+    // Photo-post carousels keep this image hidden, so don't wait for it to
+    // become visible; its src is set either way.
     const image = await page.waitForSelector("img.EmbeddedMediaImage", {
+      state: "attached",
       timeout: EMBED_IMAGE_TIMEOUT_MS,
     });
     const src = await image.evaluate(
