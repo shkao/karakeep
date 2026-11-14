@@ -43,7 +43,7 @@ export default function ReaderView({
     retriedImages.current.clear();
   }, [bookmarkId]);
   const {
-    data: cachedContent,
+    data: cached,
     isPending: isCachedContentLoading,
     refetch: refetchContent,
   } = useQuery(
@@ -62,11 +62,18 @@ export default function ReaderView({
         },
         select: (data) =>
           data.content.type == BookmarkTypes.LINK
-            ? data.content.htmlContent
-            : null,
+            ? {
+                // Only a verification page was saved; don't show it.
+                html: data.content.captureBlocked
+                  ? null
+                  : data.content.htmlContent,
+                blocked: !!data.content.captureBlocked,
+              }
+            : { html: null, blocked: false },
       },
     ),
   );
+  const cachedContent = cached?.html;
 
   const retryImage = (event: React.SyntheticEvent<HTMLDivElement>) => {
     const image = event.target;
@@ -154,7 +161,9 @@ export default function ReaderView({
               {t("preview.fetch_error_title")}
             </h3>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("preview.fetch_error_description")}
+              {cached?.blocked
+                ? t("preview.capture_blocked")
+                : t("preview.fetch_error_description")}
             </p>
           </div>
         </div>

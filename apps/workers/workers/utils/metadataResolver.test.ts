@@ -79,6 +79,19 @@ describe("resolveMetadata", () => {
 });
 
 describe("isLikelyChallengePage", () => {
+  it("doesn't flag a full-size article that has a challenge-page title", () => {
+    const htmlContent = `<html><body>${"<p>Body text.</p>".repeat(8_000)}</body></html>`;
+    expect(isLikelyChallengePage({ title: "Access Denied", htmlContent })).toBe(
+      false,
+    );
+    expect(
+      isLikelyChallengePage({
+        title: "Access Denied",
+        htmlContent: "<html><body>Denied</body></html>",
+      }),
+    ).toBe(true);
+  });
+
   it("detects known challenge-page titles regardless of case and whitespace", () => {
     expect(isLikelyChallengePage({ title: "Just a moment..." })).toBe(true);
     expect(isLikelyChallengePage({ title: "  JUST A MOMENT...  " })).toBe(true);

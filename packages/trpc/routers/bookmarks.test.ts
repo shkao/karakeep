@@ -1507,6 +1507,20 @@ describe("Bookmark Routes", () => {
       });
     });
 
+    test<CustomTestContext>("refuses to summarize a saved challenge page", async (context) => {
+      const api = context.apiCallers[0].bookmarks;
+      const bookmark = await createBookmarkWithFailedSummary(context);
+      await context.db
+        .update(bookmarkLinks)
+        .set({ readerViewReasons: ["challenge_page"] })
+        .where(eq(bookmarkLinks.id, bookmark.id));
+
+      await expect(
+        api.summarizeBookmark({ bookmarkId: bookmark.id }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      expect(inferFromText).not.toHaveBeenCalled();
+    });
+
     test<CustomTestContext>("preserves the previous summary and status when inference fails", async (context) => {
       const api = context.apiCallers[0].bookmarks;
       const bookmark = await createBookmarkWithFailedSummary(context);

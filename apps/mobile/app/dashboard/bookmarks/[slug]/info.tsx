@@ -269,7 +269,8 @@ function AISummarySection({
     );
   }
 
-  if (readOnly) {
+  // Only a verification page was saved; there's nothing to summarize.
+  if (readOnly || bookmark.content.captureBlocked) {
     return null;
   }
 

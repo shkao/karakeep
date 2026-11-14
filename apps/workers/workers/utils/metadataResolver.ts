@@ -78,10 +78,14 @@ export function isLikelyChallengePage({
   title?: string | null;
   htmlContent?: string | null;
 }): boolean {
+  // A full-size page is a real article, even one titled "Access Denied".
+  if (htmlContent && htmlContent.length > CHALLENGE_PAGE_MAX_HTML_LENGTH) {
+    return false;
+  }
   if (title && CHALLENGE_PAGE_TITLES.has(title.trim().toLowerCase())) {
     return true;
   }
-  if (!htmlContent || htmlContent.length > CHALLENGE_PAGE_MAX_HTML_LENGTH) {
+  if (!htmlContent) {
     return false;
   }
   const lowered = htmlContent.toLowerCase();
