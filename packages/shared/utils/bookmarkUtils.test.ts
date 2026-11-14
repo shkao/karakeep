@@ -61,6 +61,22 @@ describe("getBookmarkTitle", () => {
     ).toBe("These are my essential AI coding skills");
   });
 
+  test("ignores the verification page's title on a blocked capture", () => {
+    const blocked = {
+      title: null,
+      content: {
+        type: BookmarkTypes.LINK,
+        url: "https://mp.weixin.qq.com/s/abc",
+        title: "Weixin Official Accounts Platform",
+        captureBlocked: true,
+      },
+    } as unknown as ZBookmark;
+    expect(getBookmarkTitle(blocked)).toBe("https://mp.weixin.qq.com/s/abc");
+    expect(getBookmarkTitle({ ...blocked, title: "Real title" })).toBe(
+      "Real title",
+    );
+  });
+
   test("keeps a title the user set", () => {
     expect(
       getBookmarkTitle(

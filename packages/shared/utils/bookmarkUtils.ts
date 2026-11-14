@@ -127,8 +127,16 @@ export function getBookmarkTitle(bookmark: ZBookmark) {
   let title: string | null = null;
   switch (bookmark.content.type) {
     case BookmarkTypes.LINK:
-      title = bookmark.content.title ?? bookmark.content.url;
-      if (bookmark.content.title && isInstagramUrl(bookmark.content.url)) {
+      // A blocked capture's title is the verification page's, not the
+      // article's.
+      title = bookmark.content.captureBlocked
+        ? bookmark.content.url
+        : (bookmark.content.title ?? bookmark.content.url);
+      if (
+        bookmark.content.title &&
+        !bookmark.content.captureBlocked &&
+        isInstagramUrl(bookmark.content.url)
+      ) {
         title = cleanInstagramTitle(bookmark.content.title);
       }
       break;

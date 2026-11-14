@@ -157,9 +157,23 @@ export default function LinkContentSection({
       defaultSection = "overview";
     }
   }
-  const [section, setSection] = useQueryState("section", {
+  const [requestedSection, setSection] = useQueryState("section", {
     defaultValue: defaultSection,
   });
+  // A stale or hand-typed ?section= would leave the view picker blank.
+  const knownSections = new Set([
+    ...availableRenderers.map((renderer) => renderer.id),
+    ...(isInstagram ? ["summary"] : []),
+    "cached",
+    "archive",
+    "video",
+    "pdf",
+    "screenshot",
+    "overview",
+  ]);
+  const section = knownSections.has(requestedSection)
+    ? requestedSection
+    : defaultSection;
   const { data: session } = useSession();
   const isOwner = session?.user?.id === bookmark.userId;
 

@@ -11,7 +11,9 @@ import serverConfig from "@karakeep/shared/config";
 
 import { fetchWithProxy } from "../network";
 import type { CrawlContext } from "./crawlerWorker";
-import { crawlAndParseUrl } from "./crawlerWorker";
+import { OpenAIQueue } from "@karakeep/shared-server";
+
+import { crawlAndParseUrl, enqueuePostCrawlJobs } from "./crawlerWorker";
 import type { ParseSubprocessOutput } from "./utils/parseHtmlSubprocessIpc";
 import { hasCapturedContent } from "./utils/metadataResolver";
 
@@ -31,6 +33,7 @@ vi.mock("@karakeep/shared-server", async (original) => {
   const actual = await original<typeof import("@karakeep/shared-server")>();
   return {
     ...actual,
+    triggerSearchReindex: vi.fn(),
     saveAsset: vi.fn(
       async ({ assetId, asset }: { assetId: string; asset: Buffer }) => {
         state.files.set(assetId, asset);
@@ -313,6 +316,34 @@ test("marks a first crawl that gets a challenge page as blocked", async () => {
 
   // A later recrawl that is still blocked may replace the stored challenge
   // page, since there is no article to keep.
+  state.html = "<p>环境异常</p><p>第二次验证页。</p>";
   expect((await capture()).blocked).toBe(true);
-  expect((await db.query.bookmarkLinks.findFirst())?.crawledAt).not.toBeNull();
+  expect((await db.query.bookmarkLinks.findFirst())?.htmlContent).toContain(
+    "第二次验证页",
+  );
+});
+
+test("a blocked crawl still tags but doesn't summarize", async () => {
+  serverConfig.crawler.downloadVideo = false;
+  serverConfig.embedding.enableAutoIndexing = false;
+  const enqueue = vi.spyOn(OpenAIQueue, "enqueue").mockResolvedValue(undefined);
+  const ctx = {
+    bookmarkId: "article",
+    userId: "owner",
+    url: "https://example.com/article",
+  } as CrawlContext;
+  const job = { priority: 0, data: { runInference: true } } as Parameters<
+    typeof enqueuePostCrawlJobs
+  >[1];
+
+  await enqueuePostCrawlJobs(ctx, job, { summarize: false });
+  expect(enqueue.mock.calls.map(([req]) => req.type)).toEqual(["tag"]);
+
+  enqueue.mockClear();
+  await enqueuePostCrawlJobs(ctx, job, { summarize: true });
+  expect(enqueue.mock.calls.map(([req]) => req.type)).toEqual([
+    "tag",
+    "summarize",
+  ]);
+  enqueue.mockRestore();
 });

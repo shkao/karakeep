@@ -1234,10 +1234,13 @@ export const crawlAndParseUrl = traced(
         );
       }
 
-      const screenshotAssetInfo = await raceWith(
-        storeCapturedAsset(ctx, "screenshot", screenshot),
-        abortRace(abortSignal),
-      );
+      // A screenshot of a verification page isn't worth keeping.
+      const screenshotAssetInfo = renderIsChallengePage
+        ? null
+        : await raceWith(
+            storeCapturedAsset(ctx, "screenshot", screenshot),
+            abortRace(abortSignal),
+          );
       if (screenshotAssetInfo) {
         stagedAssetIds.add(screenshotAssetInfo.assetId);
       }
@@ -2062,7 +2065,7 @@ const browserlessCrawlPage = traced(
  * (tagging/summarization/embeddings), search reindexing, video download, and
  * the "crawled" webhook.
  */
-async function enqueuePostCrawlJobs(
+export async function enqueuePostCrawlJobs(
   ctx: CrawlContext,
   job: DequeuedJob<ZCrawlLinkRequest>,
   { summarize }: { summarize: boolean },

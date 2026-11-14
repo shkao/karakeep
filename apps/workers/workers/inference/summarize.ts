@@ -18,6 +18,8 @@ import { Bookmark } from "@karakeep/trpc/models/bookmarks";
 
 import { getBookmarkDomain } from "../../network";
 
+const MIN_DESCRIPTION_ONLY_CHARS = 200;
+
 async function fetchBookmarkDetailsForSummary(bookmarkId: string) {
   const bookmark = await db.query.bookmarks.findFirst({
     where: eq(bookmarks.id, bookmarkId),
@@ -117,7 +119,12 @@ export async function runSummarization(
         db,
       )) ?? "";
 
-    if (!link.description && !content) {
+    // Without a body, a short description (an Instagram caption, say) is
+    // already its own summary; the model would only restate and pad it.
+    if (
+      !content &&
+      (link.description?.trim().length ?? 0) < MIN_DESCRIPTION_ONLY_CHARS
+    ) {
       // No content to infer from; skip summarization
       logger.info(
         `[inference] No content found for link "${bookmarkId}". Skipping summary.`,
