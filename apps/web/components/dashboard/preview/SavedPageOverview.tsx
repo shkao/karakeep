@@ -18,13 +18,20 @@ function hostname(url: string) {
 
 export default function SavedPageOverview({
   link,
+  bookmarkTitle,
   onSelectSection,
 }: {
   link: ZBookmarkedLink;
+  bookmarkTitle?: string | null;
   onSelectSection: (section: string) => void;
 }) {
   const { t } = useTranslation();
-  const image = getBookmarkLinkImageUrl(link);
+  // A blocked capture's title, image and description all describe the
+  // verification page, not the article.
+  const blocked = !!link.captureBlocked;
+  const image = blocked ? null : getBookmarkLinkImageUrl(link);
+  const title = blocked ? bookmarkTitle : link.title;
+  const description = blocked ? null : link.description;
   // A blocked capture's reader view only holds the verification page.
   const readerAvailable =
     link.readerViewStatus !== "unavailable" && !link.captureBlocked;
@@ -68,11 +75,11 @@ export default function SavedPageOverview({
                 <span className="truncate">{hostname(link.url)}</span>
               </div>
               <h2 className="text-balance text-2xl font-semibold leading-tight text-foreground sm:text-3xl">
-                {link.title || hostname(link.url)}
+                {title || hostname(link.url)}
               </h2>
-              {link.description ? (
+              {description ? (
                 <p className="max-w-2xl text-pretty text-sm leading-6 text-muted-foreground sm:text-base">
-                  {link.description}
+                  {description}
                 </p>
               ) : null}
             </div>

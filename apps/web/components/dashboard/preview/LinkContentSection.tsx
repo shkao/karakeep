@@ -212,7 +212,11 @@ export default function LinkContentSection({
     content = <ScreenshotSection link={bookmark.content} />;
   } else {
     content = (
-      <SavedPageOverview link={bookmark.content} onSelectSection={setSection} />
+      <SavedPageOverview
+        link={bookmark.content}
+        bookmarkTitle={bookmark.title}
+        onSelectSection={setSection}
+      />
     );
   }
 

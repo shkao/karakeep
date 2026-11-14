@@ -45,13 +45,15 @@ export default function SummaryReader({
         }}
       >
         {image ? (
-          <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-lg bg-muted">
+          // Instagram images run from 4:5 to 1.91:1 and often carry text, so
+          // show all of it rather than cropping.
+          <div className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden rounded-lg bg-muted">
             <Image
               src={image.url}
               alt=""
               fill
               unoptimized
-              className="object-cover"
+              className="object-contain"
               sizes="384px"
             />
           </div>
