@@ -18,7 +18,7 @@ import { useSession } from "@/lib/auth/client";
 import { useClientConfig } from "@/lib/clientConfig";
 import { useTranslation } from "@/lib/i18n/client";
 import { useReaderSettings } from "@/lib/readerSettings";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpenText, ChevronRight, ExternalLink } from "lucide-react";
 
@@ -142,15 +142,22 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
     bookmark.content.type === BookmarkTypes.LINK
       ? bookmark.content.videoAssetId
       : undefined;
-  const [openedAt] = useState(() => Date.now());
-  const crawledAt =
-    bookmark.content.type === BookmarkTypes.LINK
-      ? bookmark.content.crawledAt
-      : undefined;
+  const linkContent =
+    bookmark.content.type === BookmarkTypes.LINK ? bookmark.content : null;
+  const crawledAt = linkContent?.crawledAt;
+  const crawlFailed = linkContent?.crawlStatus === "failure";
+  // Re-read the clock while waiting, so a page left open still gives up.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (videoAssetId || crawlFailed) return;
+    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, [videoAssetId, crawlFailed]);
   const videoGaveUp =
     !videoAssetId &&
-    !!crawledAt &&
-    openedAt - new Date(crawledAt).getTime() > VIDEO_DOWNLOAD_GRACE_MS;
+    (crawlFailed ||
+      (!!crawledAt &&
+        now - new Date(crawledAt).getTime() > VIDEO_DOWNLOAD_GRACE_MS));
 
   const { data: article, isPending } = useQuery(
     api.bookmarks.getVideoArticle.queryOptions(
