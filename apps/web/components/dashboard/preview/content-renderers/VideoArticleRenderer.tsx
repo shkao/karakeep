@@ -121,11 +121,19 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const clientConfig = useClientConfig();
   const isOwner = session?.user?.id === bookmark.userId;
   // Without an article, the original player is still worth showing.
-  const Player = [youTubeRenderer, tikTokRenderer].find((renderer) =>
+  const playerRenderer = [youTubeRenderer, tikTokRenderer].find((renderer) =>
     renderer.canRender(bookmark, clientConfig),
-  )?.component;
+  );
+  const Player = playerRenderer?.component;
   const playerFallback = Player ? (
-    <div className="mt-6 aspect-video w-full overflow-hidden rounded-md">
+    <div
+      className={
+        // TikTok's embed is portrait; a 16:9 box would crop it.
+        playerRenderer === tikTokRenderer
+          ? "mx-auto mt-6 aspect-[9/16] w-full max-w-xs overflow-hidden rounded-md"
+          : "mt-6 aspect-video w-full overflow-hidden rounded-md"
+      }
+    >
       <Player bookmark={bookmark} />
     </div>
   ) : null;

@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   hasCapturedContent,
+  isStoredChallengePage,
   isLikelyChallengePage,
   isWaitableChallenge,
   resolveMetadata,
@@ -250,5 +251,32 @@ describe("hasCapturedContent", () => {
         readerViewReasons: ["challenge_page"],
       }),
     ).toBe(false);
+  });
+
+  it("treats an unflagged WeChat verification extract as nothing to keep", () => {
+    // What rows crawled before the WeChat detector existed hold.
+    expect(
+      hasCapturedContent({
+        htmlContent: WECHAT_STORED_EXTRACT,
+        contentAssetId: undefined,
+        readerViewReasons: ["probably_readerable"],
+      }),
+    ).toBe(false);
+  });
+});
+
+const WECHAT_STORED_EXTRACT =
+  "  <h2>环境异常</h2> <p>当前环境异常，完成验证后即可继续访问。</p>: ，. Video Mini Program Like ，轻点两下取消赞 Wow ，轻点两下取消在看 ";
+
+describe("isStoredChallengePage", () => {
+  it("flags the stored WeChat verification extract", () => {
+    expect(isStoredChallengePage({ htmlContent: WECHAT_STORED_EXTRACT })).toBe(
+      true,
+    );
+  });
+
+  it("doesn't flag an article that quotes the verification message", () => {
+    const article = `<p>${"正文内容。".repeat(600)}</p><p>当前环境异常，完成验证后即可继续访问。</p>`;
+    expect(isStoredChallengePage({ htmlContent: article })).toBe(false);
   });
 });

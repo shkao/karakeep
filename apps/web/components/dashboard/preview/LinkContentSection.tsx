@@ -264,7 +264,9 @@ export default function LinkContentSection({
                 value="cached"
                 disabled={
                   !instagramArticle &&
-                  bookmark.content.readerViewStatus === "unavailable"
+                  (bookmark.content.readerViewStatus === "unavailable" ||
+                    // Its reader view only holds the verification page.
+                    !!bookmark.content.captureBlocked)
                 }
               >
                 <div className="flex items-center">

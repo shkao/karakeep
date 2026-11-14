@@ -130,7 +130,12 @@ export default function SummarizeBookmarkArea({
         readOnly={readOnly}
       />
     );
-  } else if (!clientConfig.inference.isConfigured || readOnly) {
+  } else if (
+    !clientConfig.inference.isConfigured ||
+    readOnly ||
+    // Only a verification page was saved; there's nothing to summarize.
+    bookmark.content.captureBlocked
+  ) {
     return null;
   } else {
     return (

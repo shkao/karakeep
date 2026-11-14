@@ -88,10 +88,38 @@ export function isLikelyChallengePage({
   return CHALLENGE_PAGE_BODY_MARKERS.some((marker) => lowered.includes(marker));
 }
 
+// The reader-view extract of WeChat's verification page, which is what rows
+// crawled before its detector existed hold. That extract is under 200
+// characters, so the tight size gate keeps articles quoting it unflagged.
+const STORED_CHALLENGE_MAX_LENGTH = 2_000;
+const STORED_CHALLENGE_MARKERS = ["完成验证后即可继续访问"];
+
+/**
+ * Whether stored content (the raw page or its reader-view extract) is a
+ * challenge page.
+ */
+export function isStoredChallengePage({
+  title,
+  htmlContent,
+}: {
+  title?: string | null;
+  htmlContent?: string | null;
+}): boolean {
+  if (isLikelyChallengePage({ title, htmlContent })) {
+    return true;
+  }
+  return (
+    !!htmlContent &&
+    htmlContent.length <= STORED_CHALLENGE_MAX_LENGTH &&
+    STORED_CHALLENGE_MARKERS.some((marker) => htmlContent.includes(marker))
+  );
+}
+
 /**
  * Whether a previous crawl stored real page content, as opposed to nothing or
- * a page it already recognized as a challenge. A blocked recrawl must not
- * replace such content with the challenge page.
+ * a challenge page (flagged at the time, or stored before its detector
+ * existed). A blocked recrawl must not replace such content with the
+ * challenge page.
  */
 export function hasCapturedContent({
   htmlContent,
@@ -104,7 +132,8 @@ export function hasCapturedContent({
 }): boolean {
   return (
     !!(htmlContent || contentAssetId) &&
-    !(readerViewReasons?.includes("challenge_page") ?? false)
+    !(readerViewReasons?.includes("challenge_page") ?? false) &&
+    !isStoredChallengePage({ htmlContent })
   );
 }
 
