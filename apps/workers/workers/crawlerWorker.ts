@@ -135,6 +135,7 @@ import {
   resolveMetadata,
 } from "./utils/metadataResolver";
 import { runParseSubprocess } from "./utils/parseSubprocess";
+import { fetchInstagramCoverUrl } from "./utils/instagramCover";
 import { installRedirectGuard } from "./utils/redirectGuard";
 
 const tracer = getTracer("@karakeep/workers");
@@ -952,6 +953,7 @@ export const crawlAndParseUrl = traced(
       pdf: Buffer | undefined;
       statusCode: number | null;
       url: string;
+      coverImageUrl?: string | null;
     };
 
     if (precrawledArchiveAssetId) {
@@ -981,6 +983,7 @@ export const crawlAndParseUrl = traced(
       pdf,
       statusCode,
       url: browserUrl,
+      coverImageUrl,
     } = result;
 
     // Track status code in Prometheus
@@ -1045,6 +1048,10 @@ export const crawlAndParseUrl = traced(
       );
     }
     const meta = resolveMetadata(renderMeta, probeMetadata, renderBlocked);
+    // Instagram's og:image is a cropped square; prefer the embed's full image.
+    if (coverImageUrl && !renderIsChallengePage) {
+      meta.image = coverImageUrl;
+    }
     const readerViewReasons: ZReaderViewReason[] | null = readerViewAssessment
       ? renderIsChallengePage &&
         !readerViewAssessment.reasons.includes("challenge_page")
@@ -1525,6 +1532,8 @@ interface CrawlPageResult {
   pdf: Buffer | undefined;
   statusCode: number;
   url: string;
+  // An uncropped cover from the site's embed page (Instagram), if any.
+  coverImageUrl?: string | null;
 }
 
 // Exported for the adhoc crawl CLI (scripts/crawlAdhoc.ts).
@@ -1651,6 +1660,7 @@ export const crawlPage = traced(
         activePage,
         forceStorePdf,
       );
+      const coverImageUrl = await fetchInstagramCoverUrl(context, url);
 
       return {
         htmlContent,
@@ -1658,6 +1668,7 @@ export const crawlPage = traced(
         screenshot,
         pdf,
         url: activePage.url(),
+        coverImageUrl,
       };
     } finally {
       await closePageAndContext(ctx, page, context, browser);
