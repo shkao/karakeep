@@ -1075,6 +1075,7 @@
       "generated_badge": "Generated from video",
       "generated_tooltip": "Written by AI from the video's speech and the creator's caption. Check important details against the video.",
       "waiting_for_video": "Waiting for the video to download…",
+      "no_video": "This video wasn't downloaded, so there's no article for it. You can still watch it here.",
       "generating": "Turning this video into an article. This usually takes under a minute.",
       "failed_title": "Couldn't write an article for this video",
       "not_generated": "There's no article for this video yet.",

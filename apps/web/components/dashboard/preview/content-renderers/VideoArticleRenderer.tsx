@@ -18,6 +18,7 @@ import { useSession } from "@/lib/auth/client";
 import { useClientConfig } from "@/lib/clientConfig";
 import { useTranslation } from "@/lib/i18n/client";
 import { useReaderSettings } from "@/lib/readerSettings";
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpenText, ChevronRight, ExternalLink } from "lucide-react";
 
@@ -107,6 +108,10 @@ function GeneratingState({ message }: { message: string }) {
   );
 }
 
+// The video download runs right after the crawl; past this, a missing video
+// means it was skipped or failed, not that it's still coming.
+const VIDEO_DOWNLOAD_GRACE_MS = 30 * 60 * 1000;
+
 function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const { t } = useTranslation();
   const api = useTRPC();
@@ -129,6 +134,15 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
     bookmark.content.type === BookmarkTypes.LINK
       ? bookmark.content.videoAssetId
       : undefined;
+  const [openedAt] = useState(() => Date.now());
+  const crawledAt =
+    bookmark.content.type === BookmarkTypes.LINK
+      ? bookmark.content.crawledAt
+      : undefined;
+  const videoGaveUp =
+    !videoAssetId &&
+    !!crawledAt &&
+    openedAt - new Date(crawledAt).getTime() > VIDEO_DOWNLOAD_GRACE_MS;
 
   const { data: article, isPending } = useQuery(
     api.bookmarks.getVideoArticle.queryOptions(
@@ -138,7 +152,7 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
         refetchInterval: (query) => {
           const status = query.state.data?.status;
           if (status === "success" || status === "failure") return false;
-          if (!status && videoAssetId) return false;
+          if (!status && (videoAssetId || videoGaveUp)) return false;
           return 5000;
         },
       },
@@ -168,9 +182,15 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   } else if (!article && !videoAssetId) {
     body = (
       <>
-        <GeneratingState
-          message={t("preview.video_article.waiting_for_video")}
-        />
+        {videoGaveUp ? (
+          <p className="mt-6 text-sm text-muted-foreground">
+            {t("preview.video_article.no_video")}
+          </p>
+        ) : (
+          <GeneratingState
+            message={t("preview.video_article.waiting_for_video")}
+          />
+        )}
         {playerFallback}
       </>
     );
