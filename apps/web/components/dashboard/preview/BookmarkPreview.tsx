@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BookmarkTagsEditor } from "@/components/dashboard/bookmarks/BookmarkTagsEditor";
 import { FullPageSpinner } from "@/components/ui/full-page-spinner";
 import { Separator } from "@/components/ui/separator";
+import { useMediaQuery } from "@/lib/hooks/useMediaQuery";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
@@ -139,6 +140,9 @@ export default function BookmarkPreview({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: session } = useSession();
   const readingMinutes = useReadingMinutes(bookmarkId);
+  // Mount one layout only: both would load every player, image and editor
+  // twice. Matches Tailwind's lg breakpoint used below.
+  const isWide = useMediaQuery("(min-width: 1024px)", true);
 
   const { data: bookmark } = useQuery(
     api.bookmarks.getBookmark.queryOptions(
@@ -245,57 +249,61 @@ export default function BookmarkPreview({
   return (
     <>
       {/* Render original layout for wide screens */}
-      <div className="hidden h-full flex-col overflow-hidden bg-card lg:flex">
-        <div className="flex min-h-0 flex-1">
-          <div className="relative h-full flex-1 overflow-auto px-4 py-4">
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="absolute right-4 top-4 z-10 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              {sidebarCollapsed ? (
-                <PanelRightOpen size={20} />
-              ) : (
-                <PanelRightClose size={20} />
-              )}
-            </button>
-            {contentSection}
-          </div>
-          {!sidebarCollapsed && (
-            <div className="flex w-1/3 flex-col gap-3 overflow-auto border-l bg-muted/40 p-5">
-              {detailsSection}
+      {isWide && (
+        <div className="hidden h-full flex-col overflow-hidden bg-card lg:flex">
+          <div className="flex min-h-0 flex-1">
+            <div className="relative h-full flex-1 overflow-auto px-4 py-4">
+              <button
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                className="absolute right-4 top-4 z-10 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                {sidebarCollapsed ? (
+                  <PanelRightOpen size={20} />
+                ) : (
+                  <PanelRightClose size={20} />
+                )}
+              </button>
+              {contentSection}
             </div>
-          )}
+            {!sidebarCollapsed && (
+              <div className="flex w-1/3 flex-col gap-3 overflow-auto border-l bg-muted/40 p-5">
+                {detailsSection}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       {/* Render tabbed layout for narrow/vertical screens */}
-      <div className="flex h-full w-full flex-col overflow-hidden lg:hidden">
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex min-h-0 flex-1 flex-col overflow-hidden"
-        >
-          <TabsList className="z-10 mx-4 mt-2 grid w-auto grid-cols-2">
-            <TabsTrigger value="content">
-              {t("preview.tabs.content")}
-            </TabsTrigger>
-            <TabsTrigger value="details">
-              {t("preview.tabs.details")}
-            </TabsTrigger>
-          </TabsList>
-          <TabsContent
-            value="content"
-            className="h-full flex-1 overflow-hidden overflow-y-auto bg-card px-4 py-3 data-[state=inactive]:hidden"
+      {!isWide && (
+        <div className="flex h-full w-full flex-col overflow-hidden lg:hidden">
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex min-h-0 flex-1 flex-col overflow-hidden"
           >
-            {contentSection}
-          </TabsContent>
-          <TabsContent
-            value="details"
-            className="h-full overflow-y-auto bg-card px-4 py-3 data-[state=inactive]:hidden"
-          >
-            {detailsSection}
-          </TabsContent>
-        </Tabs>
-      </div>
+            <TabsList className="z-10 mx-4 mt-2 grid w-auto grid-cols-2">
+              <TabsTrigger value="content">
+                {t("preview.tabs.content")}
+              </TabsTrigger>
+              <TabsTrigger value="details">
+                {t("preview.tabs.details")}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent
+              value="content"
+              className="h-full flex-1 overflow-hidden overflow-y-auto bg-card px-4 py-3 data-[state=inactive]:hidden"
+            >
+              {contentSection}
+            </TabsContent>
+            <TabsContent
+              value="details"
+              className="h-full overflow-y-auto bg-card px-4 py-3 data-[state=inactive]:hidden"
+            >
+              {detailsSection}
+            </TabsContent>
+          </Tabs>
+        </div>
+      )}
     </>
   );
 }
