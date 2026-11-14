@@ -145,19 +145,23 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const linkContent =
     bookmark.content.type === BookmarkTypes.LINK ? bookmark.content : null;
   const crawledAt = linkContent?.crawledAt;
-  const crawlFailed = linkContent?.crawlStatus === "failure";
+  const crawlStatus = linkContent?.crawlStatus;
   // Re-read the clock while waiting, so a page left open still gives up.
   const [now, setNow] = useState(() => Date.now());
+  const timedOut =
+    crawlStatus === "success" &&
+    !!crawledAt &&
+    now - new Date(crawledAt).getTime() > VIDEO_DOWNLOAD_GRACE_MS;
+  // A recrawl resets the status to pending but keeps the old crawledAt, so
+  // only a finished crawl can time out.
+  const videoGaveUp = !videoAssetId && (crawlStatus === "failure" || timedOut);
+  const waitingForVideo =
+    !videoAssetId && !videoGaveUp && crawlStatus !== "failure";
   useEffect(() => {
-    if (videoAssetId || crawlFailed) return;
+    if (!waitingForVideo) return;
     const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
     return () => clearInterval(timer);
-  }, [videoAssetId, crawlFailed]);
-  const videoGaveUp =
-    !videoAssetId &&
-    (crawlFailed ||
-      (!!crawledAt &&
-        now - new Date(crawledAt).getTime() > VIDEO_DOWNLOAD_GRACE_MS));
+  }, [waitingForVideo]);
 
   const { data: article, isPending } = useQuery(
     api.bookmarks.getVideoArticle.queryOptions(
