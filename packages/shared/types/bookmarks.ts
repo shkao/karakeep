@@ -136,6 +136,8 @@ export const zBookmarkedLinkSchema = z.object({
   readerViewStatus: zReaderViewStatusSchema.nullish(),
   readerViewScore: z.number().int().min(0).max(100).nullish(),
   preferredPreview: zPreferredLinkPreviewSchema.nullish(),
+  // The stored capture is a bot-challenge or verification page.
+  captureBlocked: z.boolean().nullish(),
   crawledAt: z.date().nullish(),
   crawlStatus: z.enum(["success", "failure", "pending"]).nullish(),
   author: z.string().nullish(),

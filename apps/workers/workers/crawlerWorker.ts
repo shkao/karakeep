@@ -130,6 +130,7 @@ import {
   truncateUrl,
 } from "./utils/crawlerUtils";
 import {
+  hasCapturedContent,
   isLikelyChallengePage,
   resolveMetadata,
 } from "./utils/metadataResolver";
@@ -364,6 +365,8 @@ async function runCrawler(
     contentAssetId: oldContentAssetId,
     precrawledArchiveAssetId,
     probeMetadataAt,
+    htmlContent: oldHtmlContent,
+    readerViewReasons: oldReaderViewReasons,
   } = await getBookmarkDetails(bookmarkId);
 
   const userData = await db.query.users.findFirst({
@@ -472,12 +475,20 @@ async function runCrawler(
       forceStorePdf: storePdf ?? false,
       numRetriesLeft,
       probeMetadataPromise,
+      keepPreviousContentIfBlocked: hasCapturedContent({
+        htmlContent: oldHtmlContent,
+        contentAssetId: oldContentAssetId,
+        readerViewReasons: oldReaderViewReasons,
+      }),
     });
 
-    await enqueuePostCrawlJobs(ctx, job);
+    // A summary of a challenge page would describe the challenge, not the
+    // article.
+    await enqueuePostCrawlJobs(ctx, job, { summarize: !page.blocked });
 
     // Do the archival as a separate last step as it has the potential for failure
     if (
+      !page.blocked &&
       !precrawledArchiveAssetId &&
       (serverConfig.crawler.fullPageArchive || archiveFullPage)
     ) {
@@ -902,19 +913,22 @@ interface CrawlAndParseUrlArgs {
   forceStorePdf: boolean;
   numRetriesLeft: number;
   probeMetadataPromise: Promise<ParseSubprocessOutput["metadata"] | null>;
+  /** A previous crawl stored real content that a challenge page must not replace. */
+  keepPreviousContentIfBlocked: boolean;
 }
 
 /**
  * Crawls the url, parses it, and persists the bookmark's metadata, content,
  * and assets. Returns the rendered page's html and final url, which the
- * full-page archival (run later by the caller) works from.
+ * full-page archival (run later by the caller) works from, and whether the
+ * render was a challenge page rather than the requested content.
  */
 export const crawlAndParseUrl = traced(
   "crawlAndParseUrl",
   async (
     ctx: CrawlContext,
     args: CrawlAndParseUrlArgs,
-  ): Promise<{ htmlContent: string; url: string }> => {
+  ): Promise<{ htmlContent: string; url: string; blocked: boolean }> => {
     const { url, userId, jobId, bookmarkId, abortSignal, runProxy, log } = ctx;
     const {
       oldAssets,
@@ -922,6 +936,7 @@ export const crawlAndParseUrl = traced(
       forceStorePdf,
       numRetriesLeft,
       probeMetadataPromise,
+      keepPreviousContentIfBlocked,
     } = args;
     const sanitizedProxyUrl = redactUrlCredentials(
       runProxy.httpsProxy ?? runProxy.httpProxy ?? "",
@@ -1018,6 +1033,12 @@ export const crawlAndParseUrl = traced(
     addLogFields<"crawlerWorker.run">({
       "crawler.render_blocked": renderBlocked,
     });
+    if (renderIsChallengePage && keepPreviousContentIfBlocked) {
+      log.info(
+        `The rendered page is a challenge page; keeping the previously captured content.`,
+      );
+      return { htmlContent, url: browserUrl, blocked: true };
+    }
     if (renderBlocked && probeMetadata) {
       log.info(
         `The rendered page looks blocked (status ${statusCode}); preferring preflight probe metadata.`,
@@ -1455,7 +1476,7 @@ export const crawlAndParseUrl = traced(
       }
     }
 
-    return { htmlContent, url: browserUrl };
+    return { htmlContent, url: browserUrl, blocked: renderIsChallengePage };
   },
 );
 
@@ -2044,6 +2065,7 @@ const browserlessCrawlPage = traced(
 async function enqueuePostCrawlJobs(
   ctx: CrawlContext,
   job: DequeuedJob<ZCrawlLinkRequest>,
+  { summarize }: { summarize: boolean },
 ): Promise<void> {
   const { bookmarkId, userId, url } = ctx;
   // Propagate priority to child jobs
@@ -2072,13 +2094,15 @@ async function enqueuePostCrawlJobs(
         enqueueOpts,
       );
     }
-    await OpenAIQueue.enqueue(
-      {
-        bookmarkId,
-        type: "summarize",
-      },
-      enqueueOpts,
-    );
+    if (summarize) {
+      await OpenAIQueue.enqueue(
+        {
+          bookmarkId,
+          type: "summarize",
+        },
+        enqueueOpts,
+      );
+    }
   }
 
   // Update the search index

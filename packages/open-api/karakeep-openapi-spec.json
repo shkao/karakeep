@@ -318,6 +318,10 @@
                       null
                     ]
                   },
+                  "captureBlocked": {
+                    "type": "boolean",
+                    "nullable": true
+                  },
                   "crawledAt": {
                     "type": "string",
                     "nullable": true,

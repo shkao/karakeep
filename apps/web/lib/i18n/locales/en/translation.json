@@ -1057,6 +1057,7 @@
     "reader_view": "Reader View",
     "page_overview": "Page Overview",
     "try_reader_view": "Try Reader View",
+    "capture_blocked": "The site showed a verification page instead of the article, so it wasn't saved. Open the original to read it.",
     "archived_page": "Archived Page",
     "archive_info": "Archives may not render correctly inline if they require Javascript. For best results, <1>download it and open in your browser</1>.",
     "fetch_error_title": "Content Unavailable",

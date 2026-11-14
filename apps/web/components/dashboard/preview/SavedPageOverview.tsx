@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/client";
-import { BookOpen, ExternalLink, Globe2 } from "lucide-react";
+import { BookOpen, ExternalLink, Globe2, ShieldAlert } from "lucide-react";
 
 import type { ZBookmarkedLink } from "@karakeep/shared/types/bookmarks";
 import { getBookmarkLinkImageUrl } from "@karakeep/shared/utils/bookmarkUtils";
@@ -24,7 +25,9 @@ export default function SavedPageOverview({
 }) {
   const { t } = useTranslation();
   const image = getBookmarkLinkImageUrl(link);
-  const readerAvailable = link.readerViewStatus !== "unavailable";
+  // A blocked capture's reader view only holds the verification page.
+  const readerAvailable =
+    link.readerViewStatus !== "unavailable" && !link.captureBlocked;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -73,6 +76,15 @@ export default function SavedPageOverview({
                 </p>
               ) : null}
             </div>
+
+            {link.captureBlocked ? (
+              <Alert>
+                <ShieldAlert className="size-4" />
+                <AlertDescription>
+                  {t("preview.capture_blocked")}
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
             <div className="flex flex-nowrap items-center gap-2">
               <Button asChild size="sm">

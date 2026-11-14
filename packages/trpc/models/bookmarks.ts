@@ -65,7 +65,7 @@ import { resolveArticleImageUrls } from "@karakeep/shared/utils/assetUtils";
 
 import { AuthedContext } from "..";
 import { mapDBAssetTypeToUserType } from "../lib/attachments";
-import { getPreferredLinkPreview } from "../lib/linkPreview";
+import { getPreferredLinkPreview, isCaptureBlocked } from "../lib/linkPreview";
 import { Asset } from "./assets";
 import { List } from "./lists";
 
@@ -212,6 +212,7 @@ export class Bookmark extends BareBookmark {
             (asset) => asset.assetType === AssetTypes.LINK_SCREENSHOT,
           ),
         }),
+        captureBlocked: isCaptureBlocked(link.readerViewReasons),
         crawledAt: link.crawledAt,
         crawlStatus: link.crawlStatus,
         author: link.author,
@@ -640,6 +641,9 @@ export class Bookmark extends BareBookmark {
                 hasScreenshot:
                   row.assets?.assetType === AssetTypes.LINK_SCREENSHOT,
               }),
+              captureBlocked: isCaptureBlocked(
+                row.bookmarkLinks.readerViewReasons,
+              ),
               crawlStatus: row.bookmarkLinks.crawlStatus,
               crawledAt: row.bookmarkLinks.crawledAt,
               author: row.bookmarkLinks.author,

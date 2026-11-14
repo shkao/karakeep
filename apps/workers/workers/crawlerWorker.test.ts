@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { eq } from "drizzle-orm";
 import { Response } from "node-fetch";
 import { beforeEach, expect, test, vi } from "vitest";
@@ -10,10 +12,13 @@ import serverConfig from "@karakeep/shared/config";
 import { fetchWithProxy } from "../network";
 import type { CrawlContext } from "./crawlerWorker";
 import { crawlAndParseUrl } from "./crawlerWorker";
+import type { ParseSubprocessOutput } from "./utils/parseHtmlSubprocessIpc";
+import { hasCapturedContent } from "./utils/metadataResolver";
 
 const state = vi.hoisted(() => ({
   files: new Map<string, Buffer>(),
   html: "",
+  assessment: null as ParseSubprocessOutput["readerViewAssessment"],
 }));
 
 vi.mock("@karakeep/db", async (original) => {
@@ -51,7 +56,7 @@ vi.mock("./utils/parseSubprocess", () => ({
   runParseSubprocess: vi.fn(async () => ({
     metadata: { title: "Illustrated article" },
     readableContent: { content: state.html },
-    readerViewAssessment: null,
+    readerViewAssessment: state.assessment,
   })),
 }));
 
@@ -82,12 +87,18 @@ async function capture(abort = controller()) {
     forceStorePdf: false,
     numRetriesLeft: 0,
     probeMetadataPromise: Promise.resolve(null),
+    keepPreviousContentIfBlocked: hasCapturedContent({
+      htmlContent: link?.htmlContent ?? null,
+      contentAssetId: link?.contentAssetId ?? undefined,
+      readerViewReasons: link?.readerViewReasons ?? null,
+    }),
   });
 }
 
 beforeEach(async () => {
   vi.clearAllMocks();
   state.files.clear();
+  state.assessment = null;
   state.files.set("archive", Buffer.from("<article>Archived source</article>"));
   state.html =
     '<figure><img src="https://example.com/chart.png"><figcaption>Chart</figcaption></figure>';
@@ -264,4 +275,44 @@ test("aborts image capture when the job is aborted", async () => {
   expect(await db.query.bookmarkLinks.findFirst()).toMatchObject({
     crawledAt: null,
   });
+});
+
+const wechatVerificationPage = readFileSync(
+  path.join(__dirname, "utils", "__fixtures__", "wechat-verification.html"),
+);
+
+test("keeps the previous article when a recrawl gets a challenge page", async () => {
+  expect((await capture()).blocked).toBe(false);
+  const before = await db.query.bookmarkLinks.findFirst();
+  const imagesBefore = await db.query.assets.findMany();
+  expect(before?.htmlContent).toContain("chart.png");
+
+  state.files.set("archive", wechatVerificationPage);
+  state.html = "<p>环境异常</p><p>当前环境异常，完成验证后即可继续访问。</p>";
+  expect((await capture()).blocked).toBe(true);
+
+  const after = await db.query.bookmarkLinks.findFirst();
+  expect(after?.htmlContent).toBe(before?.htmlContent);
+  expect(after?.title).toBe(before?.title);
+  expect(after?.crawledAt).toEqual(before?.crawledAt);
+  expect(await db.query.assets.findMany()).toEqual(imagesBefore);
+});
+
+test("marks a first crawl that gets a challenge page as blocked", async () => {
+  state.files.set("archive", wechatVerificationPage);
+  state.html = "<p>环境异常</p><p>当前环境异常，完成验证后即可继续访问。</p>";
+  state.assessment = {
+    status: "not_readable",
+    score: 10,
+    reasons: ["very_short_content"],
+    classifierVersion: 1,
+  };
+  expect((await capture()).blocked).toBe(true);
+  const link = await db.query.bookmarkLinks.findFirst();
+  expect(link?.readerViewReasons).toContain("challenge_page");
+
+  // A later recrawl that is still blocked may replace the stored challenge
+  // page, since there is no article to keep.
+  expect((await capture()).blocked).toBe(true);
+  expect((await db.query.bookmarkLinks.findFirst())?.crawledAt).not.toBeNull();
 });
