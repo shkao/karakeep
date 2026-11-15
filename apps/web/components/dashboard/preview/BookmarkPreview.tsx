@@ -239,6 +239,21 @@ function DetailsTitle({ bookmark }: { bookmark: ZBookmark }) {
 }
 
 /** Only for the views that leave the title out, like a screenshot or a video. */
+/** The summary, unless the main pane is already showing it. */
+function LinkSidebarSummary({
+  bookmark,
+  readOnly,
+}: {
+  bookmark: ZBookmark;
+  readOnly: boolean;
+}) {
+  const { section, isInstagram } = useLinkSection(bookmark);
+  if (section === "summary" && isInstagram) {
+    return null;
+  }
+  return <SummarizeBookmarkArea bookmark={bookmark} readOnly={readOnly} />;
+}
+
 function LinkDetailsTitle({ bookmark }: { bookmark: ZBookmark }) {
   const { section, instagramArticle } = useLinkSection(bookmark);
   // A reel's reader view is its generated article, which may have no title.
@@ -520,7 +535,11 @@ export default function BookmarkPreview({
       ) : (
         <SavedDate bookmark={bookmark} readOnly={!isOwner} />
       )}
-      <SummarizeBookmarkArea bookmark={bookmark} readOnly={!isOwner} />
+      {bookmark.content.type === BookmarkTypes.LINK ? (
+        <LinkSidebarSummary bookmark={bookmark} readOnly={!isOwner} />
+      ) : (
+        <SummarizeBookmarkArea bookmark={bookmark} readOnly={!isOwner} />
+      )}
       <Separator />
       <div className="flex flex-col gap-1.5">
         <SidebarSectionHeading>{t("common.tags")}</SidebarSectionHeading>
