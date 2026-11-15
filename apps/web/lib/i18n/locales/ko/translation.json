@@ -47,6 +47,7 @@
   },
   "layouts": {
     "list": "목록",
+    "masonry": "벽돌집",
     "grid": "그리드",
     "compact": "축소"
   },

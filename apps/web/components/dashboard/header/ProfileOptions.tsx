@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import Link from "next/link";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -97,11 +97,20 @@ export default function SidebarProfileOptions() {
   );
   const clientConfig = useClientConfig();
   const setReportProblemOpen = useProblemReportStore((s) => s.setOpen);
+  // A dialog opened from the menu opens as the menu hands focus back to its
+  // trigger, so the dialog returns focus there, rather than to the item that's
+  // gone by then.
+  const pendingDialog = useRef<(() => void) | null>(null);
+  const openAfterMenuCloses = (open: () => void) => () => {
+    pendingDialog.current = open;
+  };
 
   const avatarImage = whoami?.image ?? null;
   const avatarUrl = useMemo(() => avatarImage ?? null, [avatarImage]);
 
-  if (!session) return redirect("/");
+  // The server layouts guard the page. Right after a client side sign in the
+  // session can still read as empty here, so render nothing until it lands.
+  if (!session) return null;
 
   return (
     <>
@@ -120,7 +129,15 @@ export default function SidebarProfileOptions() {
             />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="mr-2 min-w-64 p-2">
+        <DropdownMenuContent
+          className="mr-2 min-w-64 p-2"
+          onCloseAutoFocus={() => {
+            // The menu focuses its trigger right after this, before the dialog
+            // has rendered.
+            pendingDialog.current?.();
+            pendingDialog.current = null;
+          }}
+        >
           <div className="flex gap-2">
             <div className="border-new-gray-200 flex aspect-square size-11 items-center justify-center overflow-hidden rounded-full border-4 bg-black p-0 text-white">
               <UserAvatar
@@ -154,14 +171,16 @@ export default function SidebarProfileOptions() {
           )}
           <Separator className="my-2" />
           <DropdownMenuItem asChild>
-            <Link href="/dashboard/cleanups">
+            <Link href="/settings/cleanups">
               <Paintbrush className="size-4" />
               {t("cleanups.cleanups")}
             </Link>
           </DropdownMenuItem>
           <ThemeSelector />
           {inBookmarkGrid && (
-            <DropdownMenuItem onClick={() => setShortcutsDialogOpen(true)}>
+            <DropdownMenuItem
+              onSelect={openAfterMenuCloses(() => setShortcutsDialogOpen(true))}
+            >
               <Keyboard className="size-4" />
               {t("keyboard_shortcuts.title")}
             </DropdownMenuItem>
@@ -198,7 +217,9 @@ export default function SidebarProfileOptions() {
             </a>
           </DropdownMenuItem>
           {clientConfig.problemReports.enabled && (
-            <DropdownMenuItem onClick={() => setReportProblemOpen(true)}>
+            <DropdownMenuItem
+              onSelect={openAfterMenuCloses(() => setReportProblemOpen(true))}
+            >
               <Bug className="size-4" />
               {t("options.report_a_problem")}
             </DropdownMenuItem>

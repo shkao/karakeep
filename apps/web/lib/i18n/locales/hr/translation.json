@@ -154,6 +154,7 @@
   "layouts": {
     "compact": "Kompaktan",
     "grid": "Mreža",
+    "masonry": "Masonerija",
     "list": "Popis"
   },
   "common": {

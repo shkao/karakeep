@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { z } from "zod";
@@ -82,9 +83,11 @@ test("refreshes saved image URLs while the reader stays open", async () => {
     defaultOptions: { queries: { retry: false } },
   });
   const view = render(
-    <QueryClientProvider client={client}>
-      <ReaderView bookmarkId="bookmark" readOnly />
-    </QueryClientProvider>,
+    <NuqsTestingAdapter>
+      <QueryClientProvider client={client}>
+        <ReaderView bookmarkId="bookmark" readOnly />
+      </QueryClientProvider>
+    </NuqsTestingAdapter>,
   );
   await act(async () => vi.advanceTimersByTimeAsync(1));
   await act(async () => vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000));
@@ -103,9 +106,11 @@ test("refreshes once when a saved image fails", async () => {
     defaultOptions: { queries: { retry: false } },
   });
   const view = render(
-    <QueryClientProvider client={client}>
-      <ReaderView bookmarkId="bookmark" readOnly />
-    </QueryClientProvider>,
+    <NuqsTestingAdapter>
+      <QueryClientProvider client={client}>
+        <ReaderView bookmarkId="bookmark" readOnly />
+      </QueryClientProvider>
+    </NuqsTestingAdapter>,
   );
   await act(async () => vi.advanceTimersByTimeAsync(1));
   const image = screen.getByRole("img");
@@ -130,9 +135,11 @@ test("shows the blocked notice instead of a saved verification page", async () =
     defaultOptions: { queries: { retry: false } },
   });
   render(
-    <QueryClientProvider client={client}>
-      <ReaderView bookmarkId="bookmark" readOnly />
-    </QueryClientProvider>,
+    <NuqsTestingAdapter>
+      <QueryClientProvider client={client}>
+        <ReaderView bookmarkId="bookmark" readOnly />
+      </QueryClientProvider>
+    </NuqsTestingAdapter>,
   );
 
   expect(await screen.findByText("preview.capture_blocked")).toBeTruthy();

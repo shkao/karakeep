@@ -34,17 +34,13 @@ it("adds a bookmark through the list dialog and finds it in the list", async ({
   const bookmark = cards.filter({ hasText: "Read this over the weekend" });
   await bookmark.locator('button[aria-haspopup="menu"]').click();
   await page
-    .getByRole("menuitem", { name: "Manage Lists", exact: true })
+    .getByRole("menuitem", { name: "Manage lists", exact: true })
     .click();
-  const dialog = page.getByRole("dialog", { name: "Manage Lists" });
-  await dialog.getByRole("combobox").click();
-  await page.getByRole("option", { name: /Weekend reading/ }).click();
-  await expect(dialog.getByRole("listitem")).toContainText("Weekend reading");
-  // Both the footer button and the corner icon are named Close.
-  await dialog
-    .getByRole("button", { name: "Close", exact: true })
-    .first()
-    .click();
+  const dialog = page.getByRole("dialog", { name: "Manage lists" });
+  const option = dialog.getByRole("option", { name: /Weekend reading/ });
+  await option.click();
+  await expect(option).toHaveAttribute("aria-checked", "true");
+  await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await expect(dialog).not.toBeVisible();
 
   await page.getByRole("link", { name: /Weekend reading/ }).click();
@@ -88,11 +84,13 @@ it("creates a list from the sidebar and shows it on All Lists", async ({
   const { trpc, email } = await createWebTestUser();
   await signIn(page, email);
 
-  await sidebarOf(page).getByRole("button", { name: "New List" }).click();
-  const dialog = page.getByRole("dialog", { name: "New List" });
-  await dialog.getByPlaceholder("List Name").fill("Recipes to try");
-  await dialog.getByPlaceholder("Description").fill("Dinner ideas");
-  await dialog.getByRole("button", { name: "Create", exact: true }).click();
+  await sidebarOf(page).getByRole("button", { name: "New list" }).click();
+  const dialog = page.getByRole("dialog", { name: "New list" });
+  await dialog.getByPlaceholder("List name").fill("Recipes to try");
+  await dialog.getByLabel("Description (optional)").fill("Dinner ideas");
+  await dialog
+    .getByRole("button", { name: "Create list", exact: true })
+    .click();
   await expect(dialog).not.toBeVisible();
 
   await expect(
@@ -112,7 +110,7 @@ it("creates a list from the sidebar and shows it on All Lists", async ({
   await expect(page).toHaveURL(new RegExp(`/dashboard/lists/${lists[0].id}$`));
 
   await sidebarOf(page)
-    .getByRole("link", { name: /All Lists/ })
+    .getByRole("link", { name: /All lists/ })
     .click();
   await expect(page).toHaveURL(/\/dashboard\/lists$/);
   await expect(
@@ -132,15 +130,17 @@ it("creates a nested list under a parent list", async ({ page }) => {
   });
   await signIn(page, email);
 
-  await sidebarOf(page).getByRole("button", { name: "New List" }).click();
-  const dialog = page.getByRole("dialog", { name: "New List" });
-  await dialog.getByPlaceholder("List Name").fill("Japan trip");
-  await dialog.getByRole("combobox").filter({ hasText: "No Parent" }).click();
+  await sidebarOf(page).getByRole("button", { name: "New list" }).click();
+  const dialog = page.getByRole("dialog", { name: "New list" });
+  await dialog.getByPlaceholder("List name").fill("Japan trip");
+  await dialog.getByRole("combobox").filter({ hasText: "No parent" }).click();
   await page.getByRole("option", { name: /Travel/ }).click();
   await expect(
     dialog.getByRole("combobox").filter({ hasText: "Travel" }),
   ).toBeVisible();
-  await dialog.getByRole("button", { name: "Create", exact: true }).click();
+  await dialog
+    .getByRole("button", { name: "Create list", exact: true })
+    .click();
   await expect(dialog).not.toBeVisible();
   await expect(
     page.getByRole("heading", { level: 1, name: "Japan trip" }),
@@ -160,7 +160,7 @@ it("creates a nested list under a parent list", async ({ page }) => {
 
   // On All Lists, the child is hidden until the parent is expanded.
   await sidebarOf(page)
-    .getByRole("link", { name: /All Lists/ })
+    .getByRole("link", { name: /All lists/ })
     .click();
   await expect(page).toHaveURL(/\/dashboard\/lists$/);
   const main = page.getByRole("main");
@@ -169,8 +169,11 @@ it("creates a nested list under a parent list", async ({ page }) => {
     .filter({ has: page.getByRole("link", { name: /Travel/ }) });
   await expect(parentRow).toBeVisible();
   await expect(main.getByRole("link", { name: /Japan trip/ })).toHaveCount(0);
-  // The expand chevron is an svg acting as the collapsible trigger.
-  const expand = parentRow.locator("svg[aria-expanded]");
+  // The expand chevron is a button acting as the collapsible trigger. The ⋯
+  // menu trigger also has aria-expanded, but it's marked as a popup.
+  const expand = parentRow.locator(
+    "button[aria-expanded]:not([aria-haspopup])",
+  );
   await expect(expand).toHaveAttribute("aria-expanded", "false");
   await expand.click();
   await expect(expand).toHaveAttribute("aria-expanded", "true");
@@ -203,7 +206,7 @@ it("removes a bookmark from a list through the card menu", async ({ page }) => {
     .locator('button[aria-haspopup="menu"]')
     .click();
   await page
-    .getByRole("menuitem", { name: "Remove from List", exact: true })
+    .getByRole("menuitem", { name: "Remove from list", exact: true })
     .click();
   await expect(cards).toHaveCount(1);
   await expect(cards).toContainText("Keep me in the queue");
@@ -237,20 +240,25 @@ it("creates a smart list that shows only matching bookmarks", async ({
   });
   await signIn(page, email);
 
-  await sidebarOf(page).getByRole("button", { name: "New List" }).click();
-  const dialog = page.getByRole("dialog", { name: "New List" });
-  await dialog.getByPlaceholder("List Name").fill("Weekend plans");
-  await dialog.getByRole("combobox").filter({ hasText: "Manual List" }).click();
-  await page.getByRole("option", { name: "Smart List", exact: true }).click();
-  await dialog.getByPlaceholder("Search Query").fill("#weekend");
-  await dialog.getByRole("button", { name: "Create", exact: true }).click();
+  await sidebarOf(page).getByRole("button", { name: "New list" }).click();
+  const dialog = page.getByRole("dialog", { name: "New list" });
+  await dialog.getByPlaceholder("List name").fill("Weekend plans");
+  await dialog.getByRole("combobox").filter({ hasText: "Manual list" }).click();
+  await page.getByRole("option", { name: "Smart list", exact: true }).click();
+  await dialog.getByRole("combobox", { name: "Tags" }).click();
+  await page.getByRole("option", { name: "weekend", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(dialog.getByText("1 bookmark matches")).toBeVisible();
+  await dialog
+    .getByRole("button", { name: "Create list", exact: true })
+    .click();
   await expect(dialog).not.toBeVisible();
 
   await expect(
     page.getByRole("heading", { level: 1, name: "Weekend plans" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("main").getByRole("button", { name: "Smart List" }),
+    page.getByRole("main").getByRole("button", { name: "Smart list" }),
   ).toBeVisible();
   const cards = bookmarkCards(page);
   await expect(cards.filter({ hasText: "Hike the ridge trail" })).toBeVisible();
@@ -261,7 +269,7 @@ it("creates a smart list that shows only matching bookmarks", async ({
   await expect(cards).toHaveCount(1);
   const { lists } = await trpc.lists.list.query();
   expect(lists).toHaveLength(1);
-  expect(lists[0]).toMatchObject({ type: "smart", query: "#weekend" });
+  expect(lists[0]).toMatchObject({ type: "smart", query: "tag:weekend" });
 });
 
 it("renames and then deletes a list from its options menu", async ({
@@ -285,11 +293,11 @@ it("renames and then deletes a list from its options menu", async ({
 
   await listHeaderOptions(page, "Old ideas").click();
   await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
-  const editDialog = page.getByRole("dialog", { name: "Edit List" });
-  await expect(editDialog.getByPlaceholder("List Name")).toHaveValue(
+  const editDialog = page.getByRole("dialog", { name: "Edit list" });
+  await expect(editDialog.getByPlaceholder("List name")).toHaveValue(
     "Old ideas",
   );
-  await editDialog.getByPlaceholder("List Name").fill("Fresh ideas");
+  await editDialog.getByPlaceholder("List name").fill("Fresh ideas");
   await editDialog.getByRole("button", { name: "Save", exact: true }).click();
   await expect(editDialog).not.toBeVisible();
   await expect(
@@ -304,10 +312,8 @@ it("renames and then deletes a list from its options menu", async ({
 
   await listHeaderOptions(page, "Fresh ideas").click();
   await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
-  const deleteDialog = page.getByRole("dialog", { name: "Delete List" });
-  await expect(deleteDialog).toContainText(
-    "Are you sure you want to delete 💡 Fresh ideas?",
-  );
+  const deleteDialog = page.getByRole("dialog", { name: "Delete list" });
+  await expect(deleteDialog).toContainText("Delete 💡 Fresh ideas?");
   await deleteDialog
     .getByRole("button", { name: "Delete", exact: true })
     .click();
@@ -360,10 +366,10 @@ it("makes a list public and opens it while logged out", async ({ page }) => {
 
     await listHeaderOptions(page, "Best of the web").click();
     await page
-      .getByRole("menuitem", { name: "Share List", exact: true })
+      .getByRole("menuitem", { name: "Share list", exact: true })
       .click();
-    const dialog = page.getByRole("dialog", { name: "Share List" });
-    const publicSwitch = dialog.getByRole("switch", { name: "Public List" });
+    const dialog = page.getByRole("dialog", { name: "Share list" });
+    const publicSwitch = dialog.getByRole("switch", { name: "Public list" });
     await expect(publicSwitch).not.toBeChecked();
     await publicSwitch.click();
     await expect(publicSwitch).toBeChecked();
@@ -413,9 +419,9 @@ it("invites a collaborator who accepts and sees the list", async ({ page }) => {
 
   await listHeaderOptions(page, "Team picks").click();
   await page
-    .getByRole("menuitem", { name: "Manage Collaborators", exact: true })
+    .getByRole("menuitem", { name: "Manage collaborators", exact: true })
     .click();
-  const dialog = page.getByRole("dialog", { name: /Manage Collaborators/ });
+  const dialog = page.getByRole("dialog", { name: /Manage collaborators/ });
   await dialog.getByPlaceholder("Enter email address").fill(collaborator.email);
   await dialog.getByPlaceholder("Enter email address").press("Enter");
   await expect(dialog.getByText(collaborator.email)).toBeVisible();
@@ -436,19 +442,19 @@ it("invites a collaborator who accepts and sees the list", async ({ page }) => {
     await signIn(otherPage, collaborator.email);
 
     // The sidebar badge counts pending invitations.
-    const allLists = sidebarListItem(otherPage, /All Lists/);
+    const allLists = sidebarListItem(otherPage, /All lists/);
     await expect(allLists).toContainText("1");
     await allLists.getByRole("link").click();
     await expect(otherPage).toHaveURL(/\/dashboard\/lists$/);
     const main = otherPage.getByRole("main");
-    await expect(main.getByText("Pending Invitations")).toBeVisible();
+    await expect(main.getByText("Pending invitations")).toBeVisible();
     await expect(main.getByText("Team picks")).toBeVisible();
     await main.getByRole("button", { name: "Accept", exact: true }).click();
 
-    await expect(main.getByText("Pending Invitations")).toHaveCount(0);
+    await expect(main.getByText("Pending invitations")).toHaveCount(0);
     await expect(allLists).not.toContainText("1");
     await expect(
-      main.getByRole("heading", { name: "Shared Lists" }),
+      main.getByRole("heading", { name: "Shared lists" }),
     ).toBeVisible();
     await main.getByRole("link", { name: /Team picks/ }).click();
     await expect(otherPage).toHaveURL(
@@ -462,7 +468,7 @@ it("invites a collaborator who accepts and sees the list", async ({ page }) => {
       cards.filter({ hasText: "Shared with the team" }),
     ).toBeVisible();
     await expect(cards).toHaveCount(1);
-    await expect(sidebarListItem(otherPage, /Shared Lists/)).toBeVisible();
+    await expect(sidebarListItem(otherPage, /Shared lists/)).toBeVisible();
     await expect(sidebarListItem(otherPage, /Team picks/)).toBeVisible();
   } finally {
     await otherContext.close();

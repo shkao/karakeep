@@ -168,6 +168,7 @@
   "layouts": {
     "list": "Lista",
     "compact": "Compacto",
+    "masonry": "Taboleiro",
     "grid": "Reixa"
   },
   "settings": {

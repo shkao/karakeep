@@ -42,29 +42,31 @@ function cardWithText(page: Page, text: string) {
 }
 
 function bulkToolbar(page: Page) {
-  return page.getByRole("toolbar", { name: "Bulk Edit", exact: true });
+  return page.getByRole("toolbar", { name: "Bulk edit", exact: true });
 }
 
-// Enters bulk-edit mode through the first card's hover button and then
+// A card's selection overlay while bulk editing, named "Select: <title>".
+function selectionOverlay(page: Page, text: string) {
+  return cardWithText(page, text).getByRole("button", { name: /^Select: / });
+}
+
+// Enters bulk-edit mode through the first card's hover toolbar and then
 // selects the remaining cards through their selection overlays.
 async function selectInBulk(page: Page, texts: string[]) {
   const [first, ...rest] = texts;
   const firstCard = cardWithText(page, first);
   await firstCard.hover();
-  await firstCard
-    .getByRole("button", { name: "Bulk Edit", exact: true })
-    .click();
+  await firstCard.getByRole("button", { name: "Select", exact: true }).click();
   await expect(bulkToolbar(page)).toBeVisible();
   for (const text of rest) {
-    const overlay = cardWithText(page, text).getByRole("button", {
-      name: "Select",
-      exact: true,
-    });
+    const overlay = selectionOverlay(page, text);
     await overlay.click();
     await expect(overlay).toHaveAttribute("aria-pressed", "true");
   }
 }
 
+// The toolbar holds a phone and a desktop set of the same buttons, and only the
+// visible set is in the accessibility tree.
 async function clickBulkAction(page: Page, name: string) {
   await bulkToolbar(page).getByRole("button", { name, exact: true }).click();
 }
@@ -82,9 +84,11 @@ it("edits a bookmark's title from the card menu", async ({ page }) => {
   await signInAndWaitForCards(page, user.email, user.ids.length);
   const card = bookmarkCards(page);
   await card.locator('button[aria-haspopup="menu"]').click();
-  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "Edit details", exact: true })
+    .click();
 
-  const dialog = page.getByRole("dialog", { name: "Edit Bookmark" });
+  const dialog = page.getByRole("dialog", { name: "Edit details" });
   await dialog.getByLabel("Title", { exact: true }).fill("Meetup recap");
   await dialog
     .getByRole("button", { name: "Save changes", exact: true })
@@ -103,16 +107,19 @@ it("adds and edits a note on the preview page", async ({ page }) => {
   await signInAndWaitForCards(page, user.email, user.ids.length);
   const [bookmarkId] = user.ids;
   await goto(page, `/dashboard/preview/${bookmarkId}`);
-  const note = page
-    .getByPlaceholder("Write some notes ...")
-    .filter({ visible: true });
+  const note = page.getByPlaceholder("Add a note…").filter({ visible: true });
   await waitForHydration(note);
   await expect(note).toHaveValue("");
 
-  // The note is saved when the textarea loses focus.
+  // The note is saved when the textarea loses focus, and shows "Saved".
   await note.fill("Use buttermilk");
   await note.blur();
-  await expect(page.getByText("The bookmark has been updated!")).toBeVisible();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Saved", visible: true }),
+  ).toBeVisible();
+  await expect
+    .poll(async () => (await getBookmarks(user, [bookmarkId]))[0].note)
+    .toBe("Use buttermilk");
   await reload(page);
   await waitForHydration(note);
   await expect(note).toHaveValue("Use buttermilk");
@@ -152,7 +159,7 @@ it("favourites the selected bookmarks in bulk", async ({ page }) => {
   const user = await seedTextBookmarks(texts);
   await signInAndWaitForCards(page, user.email, user.ids.length);
   await selectInBulk(page, ["Bulk one", "Bulk two"]);
-  await clickBulkAction(page, "Favorite");
+  await clickBulkAction(page, "Favourite");
   await expect(bulkToolbar(page)).toHaveCount(0);
   await expect(page.getByText("2 bookmarks have been updated!")).toBeVisible();
 
@@ -187,18 +194,16 @@ it("selects all bookmarks and deletes them in bulk", async ({ page }) => {
   const user = await seedTextBookmarks(texts);
   await signInAndWaitForCards(page, user.email, user.ids.length);
   await selectInBulk(page, ["Expired coupon"]);
-  await clickBulkAction(page, "Select All");
+  await clickBulkAction(page, "Select all");
   for (const text of texts.slice(1)) {
-    await expect(
-      cardWithText(page, text).getByRole("button", {
-        name: "Select",
-        exact: true,
-      }),
-    ).toHaveAttribute("aria-pressed", "true");
+    await expect(selectionOverlay(page, text)).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   }
   await clickBulkAction(page, "Delete");
   await page
-    .getByRole("dialog", { name: "Delete Bookmarks" })
+    .getByRole("dialog", { name: "Delete bookmarks" })
     .getByRole("button", { name: "Delete", exact: true })
     .click();
   await expect(bookmarkCards(page)).toHaveCount(0);
@@ -219,7 +224,7 @@ it("adds the selected bookmarks to a list in bulk", async ({ page }) => {
   });
   await signInAndWaitForCards(page, user.email, user.ids.length);
   await selectInBulk(page, ["Trip packing list", "Trip itinerary"]);
-  await clickBulkAction(page, "Add to List");
+  await clickBulkAction(page, "Add to list");
 
   const dialog = page.getByRole("dialog", { name: "Add 2 bookmarks to List" });
   await dialog.getByRole("combobox").click();
@@ -228,7 +233,7 @@ it("adds the selected bookmarks to a list in bulk", async ({ page }) => {
   await dialog.getByRole("button", { name: "Add", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(
-    page.getByText("2 bookmarks have been added to the list!"),
+    page.getByText("2 bookmarks added to the list", { exact: true }),
   ).toBeVisible();
 
   const { bookmarks } = await user.trpc.bookmarks.getBookmarks.query({
@@ -251,26 +256,25 @@ it(
     const user = await seedTextBookmarks(texts);
     await signInAndWaitForCards(page, user.email, user.ids.length);
     await selectInBulk(page, ["Sourdough starter", "Focaccia recipe"]);
-    await clickBulkAction(page, "Edit Tags");
+    await clickBulkAction(page, "Edit tags");
 
     const dialog = page.getByRole("dialog", {
-      name: "Edit Tags of 2 Bookmarks",
+      name: "Edit tags of 2 bookmarks",
     });
-    const tagInput = dialog.getByPlaceholder("Search or create tags...");
+    const tagInput = dialog.getByRole("combobox");
     await tagInput.click();
     await tagInput.fill("baking");
     // The tag doesn't exist yet, so the only option is the one creating it.
-    await page.getByRole("option", { name: "baking", exact: true }).click();
+    await page
+      .getByRole("option", { name: 'Create "baking"', exact: true })
+      .click();
     await expect(
-      page.getByText('Tag "baking" has been added to 2 bookmarks!'),
+      page.getByText('Tag "baking" added to 2 bookmarks', { exact: true }),
     ).toBeVisible();
-    // Close the tag suggestions first; they cover the dialog's footer.
+    // Close the tag suggestions first; they cover the dialog.
     await page.keyboard.press("Escape");
     await expect(page.getByRole("listbox")).toHaveCount(0);
-    await dialog
-      .getByRole("button", { name: "Close", exact: true })
-      .first()
-      .click();
+    await dialog.getByRole("button", { name: "Close", exact: true }).click();
     await expect(dialog).toHaveCount(0);
 
     const bookmarks = await getBookmarks(user, user.ids);

@@ -79,8 +79,10 @@ it(
     const card = bookmarkCards(page);
     await expect(card).toHaveCount(1);
     await card.locator('button[aria-haspopup="menu"]').click();
-    await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Edit Bookmark" });
+    await page
+      .getByRole("menuitem", { name: "Edit details", exact: true })
+      .click();
+    const dialog = page.getByRole("dialog", { name: "Edit details" });
 
     await dialog.getByRole("button", { name: "Remove obsolete" }).click();
     await expect(
@@ -97,7 +99,10 @@ it(
       await tagInput.fill("conference-2026");
       // The tag doesn't exist yet, so the only option is the one creating it.
       await page
-        .getByRole("option", { name: "conference-2026", exact: true })
+        .getByRole("option", {
+          name: 'Create "conference-2026"',
+          exact: true,
+        })
         .click({ timeout: 2000 });
     });
     await expect(
@@ -167,9 +172,9 @@ it("creates a tag from the tags page", async ({ page }) => {
   await page.getByRole("link", { name: "Tags", exact: true }).click();
   await expect(page).toHaveURL(/\/dashboard\/tags$/);
 
-  await page.getByRole("button", { name: "Create Tag", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Create Tag" });
-  await dialog.getByLabel("Tag Name").fill("someday");
+  await page.getByRole("button", { name: "New tag", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "New tag" });
+  await dialog.getByLabel("Tag name").fill("someday");
   await dialog.getByRole("button", { name: "Create", exact: true }).click();
   await expect(dialog).not.toBeVisible();
 
@@ -220,9 +225,9 @@ it(
 
     await openTagOptions(page, "draft");
     await page.getByRole("menuitem", { name: "Rename", exact: true }).click();
-    const dialog = page.getByRole("dialog", { name: "Rename Tag" });
-    await expect(dialog.getByLabel("Tag Name")).toHaveValue("draft");
-    await dialog.getByLabel("Tag Name").fill("published");
+    const dialog = page.getByRole("dialog", { name: "Rename tag" });
+    await expect(dialog.getByLabel("Tag name")).toHaveValue("draft");
+    await dialog.getByLabel("Tag name").fill("published");
     await dialog.getByRole("button", { name: "Save", exact: true }).click();
     await expect(dialog).not.toBeVisible();
 
@@ -256,7 +261,7 @@ it("merges a tag into another from its tag page", async ({ page }) => {
 
   await openTagOptions(page, "js");
   await page.getByRole("menuitem", { name: "Merge", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Merge Tag" });
+  const dialog = page.getByRole("dialog", { name: "Merge tag" });
   await retryIfPopoverIsDismissed(async () => {
     if ((await page.getByRole("listbox").count()) === 0) {
       await dialog.getByRole("combobox").click();

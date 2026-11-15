@@ -46,6 +46,7 @@
     "last_used": "Dernière utilisation"
   },
   "layouts": {
+    "masonry": "Mosaïque",
     "grid": "Grille",
     "list": "Liste",
     "compact": "Compact"

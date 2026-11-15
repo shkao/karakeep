@@ -2,15 +2,11 @@ import { z } from "zod";
 
 export const USER_LOCAL_SETTINGS_COOKIE_NAME = "hoarder-user-local-settings";
 
-// "masonry" was retired; map cookies that still hold it to "grid".
-const zBookmarkGridLayout = z.preprocess(
-  (layout) => (layout === "masonry" ? "grid" : layout),
-  z.enum(["grid", "list", "compact"]),
-);
+const zBookmarkGridLayout = z.enum(["grid", "list", "masonry", "compact"]);
 export type BookmarksLayoutTypes = z.infer<typeof zBookmarkGridLayout>;
 
 export const zUserLocalSettings = z.object({
-  bookmarkGridLayout: zBookmarkGridLayout.optional().default("grid"),
+  bookmarkGridLayout: zBookmarkGridLayout.optional().default("masonry"),
   lang: z.string().optional().default("en"),
   gridColumns: z.number().min(1).max(6).optional().default(3),
   showNotes: z.boolean().optional().default(false),

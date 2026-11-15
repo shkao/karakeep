@@ -924,6 +924,7 @@
   "layouts": {
     "compact": "Kompaktno",
     "list": "Seznam",
+    "masonry": "Zidarska vezava",
     "grid": "Mreža"
   },
   "lists": {

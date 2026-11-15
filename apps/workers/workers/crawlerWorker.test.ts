@@ -16,7 +16,7 @@ import { BookmarkTypes } from "@karakeep/shared/types/bookmarks";
 import serverConfig from "@karakeep/shared/config";
 
 import { fetchWithProxy } from "../network";
-import type { CrawlContext } from "./crawlerWorker";
+import type { CrawlContext } from "./crawler/common";
 import { OpenAIQueue } from "@karakeep/shared-server";
 
 import { crawlAndParseUrl, enqueuePostCrawlJobs } from "./crawlerWorker";
@@ -170,6 +170,8 @@ test("cleans staged images when the crawl is aborted", async () => {
         }),
     )
     .mockImplementationOnce(async () => {
+      // Abort once the first image is staged, so there's one to clean up.
+      await vi.waitFor(() => expect(state.files.size).toBe(2));
       abort.abort(new Error("cancelled"));
       throw abort.signal.reason;
     });
@@ -272,15 +274,25 @@ test("keeps remote URLs for images left when the capture budget runs out", async
 
 test("aborts image capture when the job is aborted", async () => {
   const abort = controller();
+  state.html = Array.from(
+    { length: 6 },
+    (_, i) => `<img src="https://example.com/image-${i}.png">`,
+  ).join("");
   vi.mocked(fetchWithProxy).mockImplementation(
     (_url, init) =>
       new Promise((_resolve, reject) => {
         const signal = init?.signal as AbortSignal;
+        if (signal.aborted) {
+          reject(signal.reason);
+          return;
+        }
         signal.addEventListener("abort", () => reject(signal.reason));
         abort.abort(new Error("job timed out"));
       }),
   );
   await expect(capture(abort)).rejects.toThrow("job timed out");
+  // The downloads already running fail; no new ones start after the abort.
+  expect(fetchWithProxy).toHaveBeenCalledTimes(4);
   expect(await db.query.bookmarkLinks.findFirst()).toMatchObject({
     crawledAt: null,
   });

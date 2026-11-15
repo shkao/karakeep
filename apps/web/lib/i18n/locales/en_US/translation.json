@@ -46,6 +46,7 @@
     "last_used": "Last Used"
   },
   "layouts": {
+    "masonry": "Masonry",
     "grid": "Grid",
     "list": "List",
     "compact": "Compact"

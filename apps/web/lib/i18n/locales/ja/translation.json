@@ -818,6 +818,7 @@
   "layouts": {
     "grid": "グリッド",
     "list": "リスト",
+    "masonry": "石積み",
     "compact": "コンパクト"
   },
   "lists": {
