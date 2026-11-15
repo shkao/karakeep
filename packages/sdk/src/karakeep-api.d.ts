@@ -892,6 +892,7 @@ export interface components {
             readerViewScore?: number | null;
             /** @enum {string|null} */
             preferredPreview?: "reader_view" | "screenshot" | "overview" | null;
+            captureBlocked?: boolean | null;
             /** Format: date-time */
             crawledAt?: string | null;
             /** @enum {string|null} */
@@ -929,6 +930,7 @@ export interface components {
         /** @enum {string} */
         assetType:
           | "linkHtmlContent"
+          | "articleImage"
           | "screenshot"
           | "pdf"
           | "assetScreenshot"
@@ -1846,6 +1848,7 @@ export interface operations {
            */
           assetType:
             | "linkHtmlContent"
+            | "articleImage"
             | "screenshot"
             | "pdf"
             | "assetScreenshot"
@@ -1872,6 +1875,7 @@ export interface operations {
             /** @enum {string} */
             assetType:
               | "linkHtmlContent"
+              | "articleImage"
               | "screenshot"
               | "pdf"
               | "assetScreenshot"

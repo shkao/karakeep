@@ -164,6 +164,10 @@ export default function BookmarkPreview({
 
   // Check if the current user owns this bookmark
   const isOwner = session?.user?.id === bookmark.userId;
+  // Nothing was saved for a blocked capture, so there's nothing to time.
+  const captureBlocked =
+    bookmark.content.type === BookmarkTypes.LINK &&
+    !!bookmark.content.captureBlocked;
 
   let content;
   switch (bookmark.content.type) {
@@ -207,7 +211,7 @@ export default function BookmarkPreview({
             <span>{t("preview.view_original")}</span>
           </Link>
         )}
-        {readingMinutes && (
+        {readingMinutes && !captureBlocked && (
           <span className="text-xs text-muted-foreground">
             {t("preview.reading_time", { count: readingMinutes })}
           </span>

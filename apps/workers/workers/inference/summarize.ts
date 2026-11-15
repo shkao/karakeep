@@ -31,6 +31,7 @@ async function fetchBookmarkDetailsForSummary(bookmarkId: string) {
           htmlContent: true,
           contentAssetId: true,
           crawlStatusCode: true,
+          readerViewReasons: true,
           publisher: true,
           author: true,
           url: true,
@@ -98,6 +99,15 @@ export async function runSummarization(
   let textToSummarize = "";
   if (bookmarkData.type === BookmarkTypes.LINK && bookmarkData.link) {
     const link = bookmarkData.link;
+
+    // A summary of a bot-verification page describes the page, not the
+    // article. Covers admin and CLI re-summarize, not just the crawler.
+    if (link.readerViewReasons?.includes("challenge_page")) {
+      logger.info(
+        `[inference][${jobId}] Bookmark "${bookmarkId}" holds a challenge page. Skipping summary.`,
+      );
+      return;
+    }
 
     // Extract plain text content from HTML for summarization
     let content =

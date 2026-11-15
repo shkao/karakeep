@@ -15,8 +15,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSession } from "@/lib/auth/client";
+import { useClientConfig } from "@/lib/clientConfig";
 import { useTranslation } from "@/lib/i18n/client";
 import { useReaderSettings } from "@/lib/readerSettings";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpenText, ChevronRight, ExternalLink } from "lucide-react";
 
@@ -106,18 +108,60 @@ function GeneratingState({ message }: { message: string }) {
   );
 }
 
+// The video download runs right after the crawl; past this, a missing video
+// means it was skipped or failed, not that it's still coming.
+const VIDEO_DOWNLOAD_GRACE_MS = 30 * 60 * 1000;
+
 function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const { t } = useTranslation();
   const api = useTRPC();
   const queryClient = useQueryClient();
   const { settings } = useReaderSettings();
   const { data: session } = useSession();
+  const clientConfig = useClientConfig();
   const isOwner = session?.user?.id === bookmark.userId;
+  // Without an article, the original player is still worth showing.
+  const playerRenderer = [youTubeRenderer, tikTokRenderer].find((renderer) =>
+    renderer.canRender(bookmark, clientConfig),
+  );
+  const Player = playerRenderer?.component;
+  const playerFallback = Player ? (
+    <div
+      className={
+        // TikTok's embed is portrait; a 16:9 box would crop it.
+        playerRenderer === tikTokRenderer
+          ? "mx-auto mt-6 aspect-[9/16] w-full max-w-xs overflow-hidden rounded-md"
+          : "mt-6 aspect-video w-full overflow-hidden rounded-md"
+      }
+    >
+      <Player bookmark={bookmark} />
+    </div>
+  ) : null;
 
   const videoAssetId =
     bookmark.content.type === BookmarkTypes.LINK
       ? bookmark.content.videoAssetId
       : undefined;
+  const linkContent =
+    bookmark.content.type === BookmarkTypes.LINK ? bookmark.content : null;
+  const crawledAt = linkContent?.crawledAt;
+  const crawlStatus = linkContent?.crawlStatus;
+  // Re-read the clock while waiting, so a page left open still gives up.
+  const [now, setNow] = useState(() => Date.now());
+  const timedOut =
+    crawlStatus === "success" &&
+    !!crawledAt &&
+    now - new Date(crawledAt).getTime() > VIDEO_DOWNLOAD_GRACE_MS;
+  // A recrawl resets the status to pending but keeps the old crawledAt, so
+  // only a finished crawl can time out.
+  const videoGaveUp = !videoAssetId && (crawlStatus === "failure" || timedOut);
+  const waitingForVideo =
+    !videoAssetId && !videoGaveUp && crawlStatus !== "failure";
+  useEffect(() => {
+    if (!waitingForVideo) return;
+    const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, [waitingForVideo]);
 
   const { data: article, isPending } = useQuery(
     api.bookmarks.getVideoArticle.queryOptions(
@@ -127,7 +171,7 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
         refetchInterval: (query) => {
           const status = query.state.data?.status;
           if (status === "success" || status === "failure") return false;
-          if (!status && videoAssetId) return false;
+          if (!status && (videoAssetId || videoGaveUp)) return false;
           return 5000;
         },
       },
@@ -156,7 +200,18 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
     body = <GeneratingState message={t("preview.video_article.generating")} />;
   } else if (!article && !videoAssetId) {
     body = (
-      <GeneratingState message={t("preview.video_article.waiting_for_video")} />
+      <>
+        {videoGaveUp ? (
+          <p className="mt-6 text-sm text-muted-foreground">
+            {t("preview.video_article.no_video")}
+          </p>
+        ) : (
+          <GeneratingState
+            message={t("preview.video_article.waiting_for_video")}
+          />
+        )}
+        {playerFallback}
+      </>
     );
   } else if (!article || article.status === "failure") {
     body = (
@@ -180,6 +235,12 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
           </Button>
         )}
       </Alert>
+    );
+    body = (
+      <>
+        {body}
+        {playerFallback}
+      </>
     );
   } else if (article.status === "pending" || !article.content) {
     body = <GeneratingState message={t("preview.video_article.generating")} />;

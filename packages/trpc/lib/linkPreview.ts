@@ -11,15 +11,23 @@ interface LinkPreviewSignals {
   hasScreenshot: boolean;
 }
 
+/**
+ * Whether the stored capture is a bot-challenge or verification page rather
+ * than the requested content.
+ */
+export function isCaptureBlocked(
+  readerViewReasons: ZReaderViewReason[] | null,
+): boolean {
+  return readerViewReasons?.includes("challenge_page") ?? false;
+}
+
 export function getPreferredLinkPreview({
   readerViewStatus,
   readerViewReasons,
   crawlStatusCode,
   hasScreenshot,
 }: LinkPreviewSignals): ZPreferredLinkPreview {
-  const capturedChallengePage =
-    readerViewReasons?.includes("challenge_page") ?? false;
-  if (capturedChallengePage) {
+  if (isCaptureBlocked(readerViewReasons)) {
     return "overview";
   }
 

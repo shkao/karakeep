@@ -1,3 +1,5 @@
+import type { ZReaderViewReason } from "@karakeep/shared/types/bookmarks";
+
 import type { ParseSubprocessOutput } from "./parseHtmlSubprocessIpc";
 
 /**
@@ -50,6 +52,10 @@ const CHALLENGE_PAGE_BODY_MARKERS = [
   "captcha-delivery.com",
   // Akamai / Apache-style forbidden pages
   "you don't have permission to access",
+  // WeChat's "环境异常" verification page (served with a 200 from
+  // /mp/wappoc_appmsgcaptcha). Its template id, not the copy, so articles
+  // quoting the message aren't flagged.
+  "secitptpage/verify",
 ];
 
 /**
@@ -72,14 +78,38 @@ export function isLikelyChallengePage({
   title?: string | null;
   htmlContent?: string | null;
 }): boolean {
+  // A full-size page is a real article, even one titled "Access Denied".
+  if (htmlContent && htmlContent.length > CHALLENGE_PAGE_MAX_HTML_LENGTH) {
+    return false;
+  }
   if (title && CHALLENGE_PAGE_TITLES.has(title.trim().toLowerCase())) {
     return true;
   }
-  if (!htmlContent || htmlContent.length > CHALLENGE_PAGE_MAX_HTML_LENGTH) {
+  if (!htmlContent) {
     return false;
   }
   const lowered = htmlContent.toLowerCase();
   return CHALLENGE_PAGE_BODY_MARKERS.some((marker) => lowered.includes(marker));
+}
+
+/**
+ * Whether a previous crawl stored real page content, as opposed to nothing or
+ * a page it already recognized as a challenge. A blocked recrawl must not
+ * replace such content with the challenge page.
+ */
+export function hasCapturedContent({
+  htmlContent,
+  contentAssetId,
+  readerViewReasons,
+}: {
+  htmlContent: string | null;
+  contentAssetId: string | undefined;
+  readerViewReasons: ZReaderViewReason[] | null;
+}): boolean {
+  return (
+    !!(htmlContent || contentAssetId) &&
+    !(readerViewReasons?.includes("challenge_page") ?? false)
+  );
 }
 
 // DataDome's captcha page (as opposed to its self-clearing device check) needs

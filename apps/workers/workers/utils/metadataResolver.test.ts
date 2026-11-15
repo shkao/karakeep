@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  hasCapturedContent,
   isLikelyChallengePage,
   isWaitableChallenge,
   resolveMetadata,
@@ -76,6 +79,19 @@ describe("resolveMetadata", () => {
 });
 
 describe("isLikelyChallengePage", () => {
+  it("doesn't flag a full-size article that has a challenge-page title", () => {
+    const htmlContent = `<html><body>${"<p>Body text.</p>".repeat(8_000)}</body></html>`;
+    expect(isLikelyChallengePage({ title: "Access Denied", htmlContent })).toBe(
+      false,
+    );
+    expect(
+      isLikelyChallengePage({
+        title: "Access Denied",
+        htmlContent: "<html><body>Denied</body></html>",
+      }),
+    ).toBe(true);
+  });
+
   it("detects known challenge-page titles regardless of case and whitespace", () => {
     expect(isLikelyChallengePage({ title: "Just a moment..." })).toBe(true);
     expect(isLikelyChallengePage({ title: "  JUST A MOMENT...  " })).toBe(true);
@@ -117,6 +133,38 @@ describe("isLikelyChallengePage", () => {
         htmlContent: `<html><body><p>Checking your browser before accessing example.com</p></body></html>`,
       }),
     ).toBe(true);
+  });
+
+  it("detects the WeChat environment-verification page", () => {
+    const htmlContent = readFileSync(
+      path.join(__dirname, "__fixtures__", "wechat-verification.html"),
+      "utf8",
+    );
+    expect(isLikelyChallengePage({ title: "", htmlContent })).toBe(true);
+    // Desktop browsers retitle the page after load.
+    expect(isLikelyChallengePage({ title: "微信公众平台", htmlContent })).toBe(
+      true,
+    );
+  });
+
+  it("does not flag WeChat articles, including ones quoting the verification copy", () => {
+    const article = (body: string) =>
+      `<html><head><title>文章</title></head><body><div id="js_content">${body}</div>` +
+      `<script>var PAGE_MID='mmbizwap:appmsg/index.html';</script></body></html>`;
+    expect(
+      isLikelyChallengePage({
+        title: "文章",
+        htmlContent: article("<p>今天聊聊大型語言模型。</p>"),
+      }),
+    ).toBe(false);
+    expect(
+      isLikelyChallengePage({
+        title: "为什么微信提示环境异常",
+        htmlContent: article(
+          "<h2>环境异常</h2><p>很多人打开文章时看到「当前环境异常，完成验证后即可继续访问。」</p>",
+        ),
+      }),
+    ).toBe(false);
   });
 
   it("ignores body markers in large documents (e.g. articles quoting them)", () => {
@@ -178,6 +226,42 @@ describe("isWaitableChallenge", () => {
         "Example Domain",
         "<html><head><title>Example Domain</title></head><body><p>Hello</p></body></html>",
       ),
+    ).toBe(false);
+  });
+});
+
+describe("hasCapturedContent", () => {
+  it("keeps stored content that wasn't a challenge page", () => {
+    expect(
+      hasCapturedContent({
+        htmlContent: "<p>article</p>",
+        contentAssetId: undefined,
+        readerViewReasons: ["probably_readerable"],
+      }),
+    ).toBe(true);
+    expect(
+      hasCapturedContent({
+        htmlContent: null,
+        contentAssetId: "asset",
+        readerViewReasons: null,
+      }),
+    ).toBe(true);
+  });
+
+  it("has nothing to keep without content or when it was a challenge page", () => {
+    expect(
+      hasCapturedContent({
+        htmlContent: null,
+        contentAssetId: undefined,
+        readerViewReasons: null,
+      }),
+    ).toBe(false);
+    expect(
+      hasCapturedContent({
+        htmlContent: "<p>环境异常</p>",
+        contentAssetId: undefined,
+        readerViewReasons: ["challenge_page"],
+      }),
     ).toBe(false);
   });
 });

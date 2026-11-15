@@ -80,6 +80,7 @@ import {
 import { RuleEngine } from "../lib/ruleEngine";
 import { getBookmarkIdsFromMatcher } from "../lib/search";
 import { reciprocalRankFusion } from "../lib/searchRanking";
+import { isCaptureBlocked } from "../lib/linkPreview";
 import { Asset } from "../models/assets";
 import { BareBookmark, Bookmark } from "../models/bookmarks";
 import { WebhooksService } from "../models/webhooks.service";
@@ -1653,6 +1654,13 @@ export const bookmarksAppRouter = router({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Bookmark not found or not a link",
+        });
+      }
+      if (isCaptureBlocked(bookmark.readerViewReasons)) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message:
+            "Only a verification page was saved for this bookmark, so there's nothing to summarize",
         });
       }
 
