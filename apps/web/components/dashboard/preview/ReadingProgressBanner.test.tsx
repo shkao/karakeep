@@ -8,6 +8,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
+import { TooltipProvider } from "@/components/ui/tooltip";
+
 import ReadingProgressBanner from "./ReadingProgressBanner";
 
 vi.mock("@/lib/i18n/client", () => ({
@@ -23,7 +25,9 @@ afterEach(() => {
 test("dismisses after eight seconds", () => {
   const dismiss = vi.fn();
   const view = render(
-    <ReadingProgressBanner onContinue={vi.fn()} onDismiss={dismiss} />,
+    <TooltipProvider>
+      <ReadingProgressBanner onContinue={vi.fn()} onDismiss={dismiss} />
+    </TooltipProvider>,
   );
   act(() => vi.advanceTimersByTime(7999));
   expect(dismiss).not.toHaveBeenCalled();
@@ -35,9 +39,12 @@ test("dismisses after eight seconds", () => {
 test("pauses the remaining time while hovered or focused", () => {
   const dismiss = vi.fn();
   const view = render(
-    <ReadingProgressBanner onContinue={vi.fn()} onDismiss={dismiss} />,
+    <TooltipProvider>
+      <ReadingProgressBanner onContinue={vi.fn()} onDismiss={dismiss} />
+    </TooltipProvider>,
   );
-  const banner = screen.getByText("preview.continue_reading").parentElement!;
+  const banner = screen.getByText("preview.continue_reading").parentElement!
+    .parentElement!;
   act(() => vi.advanceTimersByTime(3000));
   fireEvent.mouseEnter(banner);
   act(() => vi.advanceTimersByTime(10000));

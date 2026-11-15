@@ -673,6 +673,7 @@
   },
   "layouts": {
     "compact": "Compacto",
+    "masonry": "Mampostería",
     "grid": "Rejilla",
     "list": "Lista"
   },

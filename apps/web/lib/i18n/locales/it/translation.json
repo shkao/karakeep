@@ -730,6 +730,7 @@
     "placeholder_v2": "Incolla un link, scrivi una nota o rilascia un'immagine…"
   },
   "layouts": {
+    "masonry": "Masonry",
     "grid": "Griglia",
     "list": "Lista",
     "compact": "Compatto"

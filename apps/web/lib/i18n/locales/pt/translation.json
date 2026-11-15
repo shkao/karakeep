@@ -1167,7 +1167,8 @@
   "layouts": {
     "grid": "Grelha",
     "list": "Lista",
-    "compact": "Compacto"
+    "compact": "Compacto",
+    "masonry": "Mosaico"
   },
   "banners": {
     "no_bookmarks": {

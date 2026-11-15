@@ -6,7 +6,7 @@ import { fallbackLng } from "@/lib/i18n/settings";
 
 import type { BookmarksLayoutTypes, zUserLocalSettings } from "./types";
 
-const defaultLayout: BookmarksLayoutTypes = "grid";
+const defaultLayout: BookmarksLayoutTypes = "masonry";
 
 export const UserLocalSettingsCtx = createContext<
   z.infer<typeof zUserLocalSettings>

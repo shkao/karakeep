@@ -1111,6 +1111,7 @@
     }
   },
   "layouts": {
+    "masonry": "Murverk",
     "list": "Liste",
     "compact": "Kompakt",
     "grid": "Rutenett"

@@ -28,30 +28,35 @@ it("changes the password and signs back in with the new one", async ({
   await signIn(page, email);
 
   await goto(page, "/settings/info");
-  await expect(page.getByRole("heading", { name: "User Info" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Profile", exact: true }),
+  ).toBeVisible();
   await expect(page.locator("#email")).toHaveValue(email);
-  await expect(page.locator("#name")).toHaveValue("Test User");
+  await expect(page.getByLabel("Name", { exact: true })).toHaveValue(
+    "Test User",
+  );
 
-  await page.getByLabel("Current Password", { exact: true }).fill("test1234");
-  await page.getByLabel("New Password", { exact: true }).fill("n3w-passw0rd");
+  await page.getByLabel("Current password", { exact: true }).fill("test1234");
+  await page.getByLabel("New password", { exact: true }).fill("n3w-passw0rd");
   await page
-    .getByLabel("Confirm New Password", { exact: true })
+    .getByLabel("Confirm new password", { exact: true })
     .fill("n3w-passw0rd");
   await page
-    .getByRole("button", { name: "Change Password", exact: true })
+    .getByRole("button", { name: "Change password", exact: true })
     .click();
-  await expect(page.getByText("Password changed successfully")).toBeVisible({
-    timeout: 30000,
-  });
+  // Confirmed inline next to the button, rather than with a toast.
+  await expect(
+    page.getByRole("status").filter({ hasText: "Saved" }),
+  ).toBeVisible({ timeout: 30000 });
   // The form is cleared after a successful change.
   await expect(
-    page.getByLabel("Current Password", { exact: true }),
+    page.getByLabel("Current password", { exact: true }),
   ).toHaveValue("");
 
   await goto(page, "/dashboard/bookmarks");
   // The profile menu trigger is the avatar, named after the user's initial.
   await page.getByRole("button", { name: "T", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Sign Out", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/signin/, { timeout: 30000 });
 
   await submitSignInForm(page, email, "test1234");
@@ -70,13 +75,13 @@ it("rejects a password change with a wrong current password", async ({
   await signIn(page, email);
 
   await goto(page, "/settings/info");
-  await page.getByLabel("Current Password", { exact: true }).fill("wrong-pass");
-  await page.getByLabel("New Password", { exact: true }).fill("n3w-passw0rd");
+  await page.getByLabel("Current password", { exact: true }).fill("wrong-pass");
+  await page.getByLabel("New password", { exact: true }).fill("n3w-passw0rd");
   await page
-    .getByLabel("Confirm New Password", { exact: true })
+    .getByLabel("Confirm new password", { exact: true })
     .fill("n3w-passw0rd");
   await page
-    .getByRole("button", { name: "Change Password", exact: true })
+    .getByRole("button", { name: "Change password", exact: true })
     .click();
   await expect(
     page.getByText("Your current password is incorrect"),
@@ -119,13 +124,14 @@ it("hides archived bookmarks in tags once the archive option is changed", async 
   await expect(cards.filter({ hasText: "Already finished" })).toBeVisible();
   await expect(cards).toHaveCount(2);
 
-  await goto(page, "/settings/info");
-  const showOption = "Show archived bookmarks in tags and lists";
-  const hideOption = "Hide archived bookmarks in tags and lists";
+  // The archive option lives on the General page, and saves on change.
+  await goto(page, "/settings/preferences");
+  const showOption = "Show in tags and lists";
+  const hideOption = "Hide in tags and lists";
   await page.getByRole("combobox").filter({ hasText: showOption }).click();
   await page.getByRole("option", { name: hideOption, exact: true }).click();
   await expect(
-    page.getByText("User settings have been updated!"),
+    page.getByRole("status").filter({ hasText: "Saved" }),
   ).toBeVisible();
   await expect(
     page.getByRole("combobox").filter({ hasText: hideOption }),
@@ -149,15 +155,21 @@ it("creates an API key that works until it is deleted", async ({ page }) => {
   await signIn(page, email);
 
   await goto(page, "/settings/api-keys");
-  await page.getByRole("button", { name: "New API Key", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "New API Key" });
+  await page.getByRole("button", { name: "New API key", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "New API key" });
   await dialog.getByLabel("Name", { exact: true }).fill("My script");
-  await dialog.getByRole("button", { name: "Create", exact: true }).click();
+  await dialog
+    .getByRole("button", { name: "Create API key", exact: true })
+    .click();
 
+  // The same dialog switches to a screen for copying the key.
   const successDialog = page.getByRole("dialog", {
-    name: "Key was successfully created",
+    name: "Copy your API key",
   });
-  const keyInput = successDialog.getByRole("textbox");
+  const keyInput = successDialog.getByRole("textbox", {
+    name: "Your API key",
+    exact: true,
+  });
   // The key is shown once its secret is hashed, which is slow while other
   // tests are hashing passwords.
   await expect(keyInput).not.toHaveValue("", { timeout: 30000 });
@@ -178,8 +190,14 @@ it("creates an API key that works until it is deleted", async ({ page }) => {
   await reload(page);
   await expect(row).toBeVisible();
 
-  await row.getByRole("button", { name: "Delete", exact: true }).click();
-  const confirm = page.getByRole("dialog", { name: "Delete API Key" });
+  // The key itself is masked in the list.
+  await expect(row).not.toContainText(apiKey);
+
+  await row
+    .getByRole("button", { name: "Actions for My script", exact: true })
+    .click();
+  await page.getByRole("menuitem", { name: "Delete", exact: true }).click();
+  const confirm = page.getByRole("dialog", { name: "Delete API key?" });
   await expect(confirm).toContainText('"My script"');
   await confirm.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(confirm).not.toBeVisible();
@@ -199,13 +217,11 @@ it("creates, edits and deletes a webhook", async ({ page }) => {
 
   await goto(page, "/settings/webhooks");
   await expect(
-    page.getByText("You don't have any webhooks configured yet."),
+    page.getByText("No webhooks yet", { exact: true }),
   ).toBeVisible();
 
-  await page
-    .getByRole("button", { name: "Create Webhook", exact: true })
-    .click();
-  const createDialog = page.getByRole("dialog", { name: "Create Webhook" });
+  await page.getByRole("button", { name: "New webhook", exact: true }).click();
+  const createDialog = page.getByRole("dialog", { name: "New webhook" });
   await createDialog
     .getByLabel("URL", { exact: true })
     .fill("http://nginx/hooks/first");
@@ -213,15 +229,22 @@ it("creates, edits and deletes a webhook", async ({ page }) => {
   await page.getByRole("option", { name: "created", exact: true }).click();
   await page.keyboard.press("Escape");
   await expect(createDialog.getByRole("combobox")).toHaveText("created");
-  await createDialog.getByRole("button", { name: "Add", exact: true }).click();
+  await createDialog
+    .getByRole("button", { name: "Create webhook", exact: true })
+    .click();
   await expect(createDialog).not.toBeVisible();
 
   const row = page.getByRole("row").filter({ hasText: "http://nginx/hooks" });
+  // Each row's actions are in a menu named after its URL.
+  const rowMenu = row.getByRole("button", {
+    name: /^Actions for http:\/\/nginx\/hooks\//,
+  });
   await expect(row).toContainText("http://nginx/hooks/first");
   await expect(row).toContainText("created");
 
-  await row.getByRole("button", { name: "Edit", exact: true }).click();
-  const editDialog = page.getByRole("dialog", { name: "Edit Webhook" });
+  await rowMenu.click();
+  await page.getByRole("menuitem", { name: "Edit", exact: true }).click();
+  const editDialog = page.getByRole("dialog", { name: "Edit webhook" });
   await editDialog
     .getByLabel("URL", { exact: true })
     .fill("http://nginx/hooks/second");
@@ -241,12 +264,15 @@ it("creates, edits and deletes a webhook", async ({ page }) => {
   expect(webhooks[0].url).toBe("http://nginx/hooks/second");
   expect(webhooks[0].events).toEqual(["created", "edited"]);
 
-  await row.getByRole("button", { name: "Delete", exact: true }).click();
-  const confirm = page.getByRole("dialog", { name: "Delete Webhook" });
+  await rowMenu.click();
+  await page
+    .getByRole("menuitem", { name: "Delete webhook", exact: true })
+    .click();
+  const confirm = page.getByRole("dialog", { name: "Delete webhook?" });
   await confirm.getByRole("button", { name: "Delete", exact: true }).click();
   await expect(row).not.toBeVisible();
   await expect(
-    page.getByText("You don't have any webhooks configured yet."),
+    page.getByText("No webhooks yet", { exact: true }),
   ).toBeVisible();
   expect((await trpc.webhooks.list.query()).webhooks).toHaveLength(0);
 });
@@ -261,15 +287,13 @@ it(
 
     await goto(page, "/settings/rules");
     await expect(page.getByText("No rules created yet")).toBeVisible();
-    await page
-      .getByRole("button", { name: "Create Rule", exact: true })
-      .click();
+    await page.getByRole("button", { name: "New rule", exact: true }).click();
 
-    await page.getByLabel("Rule Name", { exact: true }).fill("Tag everything");
+    await page.getByLabel("Rule name", { exact: true }).fill("Tag everything");
     await page
       .getByLabel("Description", { exact: true })
       .fill("Adds the inbox tag to new bookmarks");
-    // The new rule defaults to "A bookmark is added" -> "Add Tag".
+    // The new rule defaults to "A bookmark is added" -> "Add tag".
     await expect(
       page.getByRole("combobox").filter({ hasText: "A bookmark is added" }),
     ).toBeVisible();
@@ -281,12 +305,12 @@ it(
     await expect(
       page.getByRole("combobox").filter({ hasText: "inbox" }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "Save Rule", exact: true }).click();
-    await expect(page.getByText("Rule has been created!")).toBeVisible();
+    await page.getByRole("button", { name: "Save rule", exact: true }).click();
+    await expect(page.getByText("Rule created")).toBeVisible();
 
     // Saving closes the editor and lists the rule.
     await expect(
-      page.getByRole("button", { name: "Save Rule", exact: true }),
+      page.getByRole("button", { name: "Save rule", exact: true }),
     ).not.toBeVisible();
     const ruleCard = page
       .locator("div")
@@ -318,16 +342,16 @@ it(
       .toContain("inbox");
 
     await ruleCard.getByRole("switch").click();
-    await expect(page.getByText("Rule has been updated!")).toBeVisible();
+    await expect(page.getByText("Rule updated")).toBeVisible();
     await expect(ruleCard.getByRole("switch")).not.toBeChecked();
     await reload(page);
     await expect(ruleCard.getByRole("switch")).not.toBeChecked();
     expect((await trpc.rules.list.query()).rules[0].enabled).toBe(false);
 
     await ruleCard.getByRole("button").last().click();
-    const confirm = page.getByRole("dialog", { name: "Delete Rule" });
+    const confirm = page.getByRole("dialog", { name: "Delete rule" });
     await confirm.getByRole("button", { name: "Delete", exact: true }).click();
-    await expect(page.getByText("Rule has been deleted!")).toBeVisible();
+    await expect(page.getByText("Rule deleted")).toBeVisible();
     await expect(page.getByText("No rules created yet")).toBeVisible();
     expect((await trpc.rules.list.query()).rules).toHaveLength(0);
   },

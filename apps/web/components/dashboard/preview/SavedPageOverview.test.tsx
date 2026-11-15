@@ -25,7 +25,7 @@ test("a blocked capture shows none of the verification page's details", () => {
   const view = render(
     <SavedPageOverview
       link={blockedLink}
-      bookmarkTitle="The real article"
+      title="The real article"
       onSelectSection={vi.fn()}
     />,
   );

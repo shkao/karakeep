@@ -991,7 +991,8 @@
   "layouts": {
     "grid": "Сетка",
     "list": "Список",
-    "compact": "Компактно"
+    "compact": "Компактно",
+    "masonry": "Плитка"
   },
   "options": {
     "theme": "Тема",

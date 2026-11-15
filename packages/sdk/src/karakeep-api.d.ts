@@ -943,6 +943,7 @@ export interface components {
           | "avatar"
           | "unknown";
         fileName?: string | null;
+        size?: number | null;
       }[];
     };
     /** @description Cursor from a previous response to fetch the next page. */
@@ -1020,9 +1021,31 @@ export interface components {
       };
     };
     PaginatedHighlights: {
-      highlights: components["schemas"]["Highlight"][];
+      highlights: components["schemas"]["HighlightWithBookmark"][];
       /** @description Cursor for the next page, or null if no more results. */
       nextCursor: string | null;
+    };
+    HighlightWithBookmark: {
+      bookmarkId: string;
+      startOffset: number;
+      endOffset: number;
+      /**
+       * @default yellow
+       * @enum {string}
+       */
+      color: "yellow" | "red" | "green" | "blue";
+      text: string | null;
+      prefix: string | null;
+      suffix: string | null;
+      note: string | null;
+      id: string;
+      userId: string;
+      /** Format: date-time */
+      createdAt: string;
+      bookmark: {
+        title: string | null;
+        url: string | null;
+      };
     };
     UploadedAsset: {
       /** @description The unique identifier assigned to the uploaded asset. */
@@ -1888,6 +1911,7 @@ export interface operations {
               | "avatar"
               | "unknown";
             fileName?: string | null;
+            size?: number | null;
           };
         };
       };

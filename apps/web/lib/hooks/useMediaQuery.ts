@@ -1,15 +1,17 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * Whether a CSS media query matches, kept in sync as the window changes.
- * `serverValue` is used for server rendering and the first client render.
+ * Tracks a CSS media query. It's `serverValue` (false by default) on the server
+ * and during hydration, so
+ * only use it for details that can settle after the first paint; use CSS
+ * variants for anything that would shift the layout.
  */
-export function useMediaQuery(query: string, serverValue = false): boolean {
+export function useMediaQuery(query: string, serverValue = false) {
   const subscribe = useCallback(
     (onChange: () => void) => {
-      const list = window.matchMedia(query);
-      list.addEventListener("change", onChange);
-      return () => list.removeEventListener("change", onChange);
+      const media = window.matchMedia(query);
+      media.addEventListener("change", onChange);
+      return () => media.removeEventListener("change", onChange);
     },
     [query],
   );
