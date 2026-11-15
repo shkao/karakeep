@@ -29,6 +29,7 @@ import { READER_FONT_FAMILIES } from "@karakeep/shared/types/readers";
 
 import { ContentRenderer } from "./types";
 import { tikTokRenderer } from "./TikTokRenderer";
+import { hasVideoDownloadGivenUp } from "./videoDownloadWait";
 import { youTubeRenderer } from "./YouTubeRenderer";
 
 const INSTAGRAM_VIDEO_PATH = /^\/(reel|reels|tv)\/[^/]+/;
@@ -108,10 +109,6 @@ function GeneratingState({ message }: { message: string }) {
   );
 }
 
-// The video download runs right after the crawl; past this, a missing video
-// means it was skipped or failed, not that it's still coming.
-const VIDEO_DOWNLOAD_GRACE_MS = 30 * 60 * 1000;
-
 function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const { t } = useTranslation();
   const api = useTRPC();
@@ -148,13 +145,12 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
   const crawlStatus = linkContent?.crawlStatus;
   // Re-read the clock while waiting, so a page left open still gives up.
   const [now, setNow] = useState(() => Date.now());
-  const timedOut =
-    crawlStatus === "success" &&
-    !!crawledAt &&
-    now - new Date(crawledAt).getTime() > VIDEO_DOWNLOAD_GRACE_MS;
-  // A recrawl resets the status to pending but keeps the old crawledAt, so
-  // only a finished crawl can time out.
-  const videoGaveUp = !videoAssetId && (crawlStatus === "failure" || timedOut);
+  const videoGaveUp = hasVideoDownloadGivenUp({
+    videoAssetId,
+    crawlStatus,
+    crawledAt,
+    now,
+  });
   const waitingForVideo =
     !videoAssetId && !videoGaveUp && crawlStatus !== "failure";
   useEffect(() => {
@@ -215,7 +211,7 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
     );
   } else if (!article || article.status === "failure") {
     body = (
-      <Alert>
+      <Alert className={playerFallback ? "mt-6" : undefined}>
         <AlertTitle>
           {article
             ? t("preview.video_article.failed_title")
@@ -236,10 +232,11 @@ function VideoArticleRendererComponent({ bookmark }: { bookmark: ZBookmark }) {
         )}
       </Alert>
     );
+    // Lead with the video; the missing article is secondary.
     body = (
       <>
-        {body}
         {playerFallback}
+        {body}
       </>
     );
   } else if (article.status === "pending" || !article.content) {

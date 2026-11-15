@@ -5,13 +5,21 @@ import { Response } from "node-fetch";
 import { beforeEach, expect, test, vi } from "vitest";
 
 import { db } from "@karakeep/db";
-import { bookmarkLinks, bookmarks, users } from "@karakeep/db/schema";
+import {
+  assets,
+  AssetTypes,
+  bookmarkLinks,
+  bookmarks,
+  users,
+} from "@karakeep/db/schema";
 import { BookmarkTypes } from "@karakeep/shared/types/bookmarks";
 import serverConfig from "@karakeep/shared/config";
 
 import { fetchWithProxy } from "../network";
 import type { CrawlContext } from "./crawlerWorker";
-import { crawlAndParseUrl } from "./crawlerWorker";
+import { OpenAIQueue } from "@karakeep/shared-server";
+
+import { crawlAndParseUrl, enqueuePostCrawlJobs } from "./crawlerWorker";
 import type { ParseSubprocessOutput } from "./utils/parseHtmlSubprocessIpc";
 import { hasCapturedContent } from "./utils/metadataResolver";
 
@@ -31,6 +39,7 @@ vi.mock("@karakeep/shared-server", async (original) => {
   const actual = await original<typeof import("@karakeep/shared-server")>();
   return {
     ...actual,
+    triggerSearchReindex: vi.fn(),
     saveAsset: vi.fn(
       async ({ assetId, asset }: { assetId: string; asset: Buffer }) => {
         state.files.set(assetId, asset);
@@ -72,13 +81,13 @@ const context = (abort: AbortController): CrawlContext => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 });
 
-async function capture(abort = controller()) {
+async function capture(abort = controller(), screenshotAssetId?: string) {
   const link = await db.query.bookmarkLinks.findFirst({
     where: eq(bookmarkLinks.id, "article"),
   });
   return crawlAndParseUrl(context(abort), {
     oldAssets: {
-      screenshotAssetId: undefined,
+      screenshotAssetId,
       pdfAssetId: undefined,
       imageAssetId: undefined,
       contentAssetId: link?.contentAssetId ?? undefined,
@@ -313,6 +322,44 @@ test("marks a first crawl that gets a challenge page as blocked", async () => {
 
   // A later recrawl that is still blocked may replace the stored challenge
   // page, since there is no article to keep.
-  expect((await capture()).blocked).toBe(true);
-  expect((await db.query.bookmarkLinks.findFirst())?.crawledAt).not.toBeNull();
+  state.html = "<p>环境异常</p><p>第二次验证页。</p>";
+  await db.insert(assets).values({
+    id: "old-shot",
+    bookmarkId: "article",
+    userId: "owner",
+    assetType: AssetTypes.LINK_SCREENSHOT,
+  });
+  expect((await capture(controller(), "old-shot")).blocked).toBe(true);
+  // A screenshot of the earlier verification page isn't kept beside it.
+  expect(
+    await db.query.assets.findFirst({ where: eq(assets.id, "old-shot") }),
+  ).toBeUndefined();
+  expect((await db.query.bookmarkLinks.findFirst())?.htmlContent).toContain(
+    "第二次验证页",
+  );
+});
+
+test("a blocked crawl still tags but doesn't summarize", async () => {
+  serverConfig.crawler.downloadVideo = false;
+  serverConfig.embedding.enableAutoIndexing = false;
+  const enqueue = vi.spyOn(OpenAIQueue, "enqueue").mockResolvedValue(undefined);
+  const ctx = {
+    bookmarkId: "article",
+    userId: "owner",
+    url: "https://example.com/article",
+  } as CrawlContext;
+  const job = { priority: 0, data: { runInference: true } } as Parameters<
+    typeof enqueuePostCrawlJobs
+  >[1];
+
+  await enqueuePostCrawlJobs(ctx, job, { summarize: false });
+  expect(enqueue.mock.calls.map(([req]) => req.type)).toEqual(["tag"]);
+
+  enqueue.mockClear();
+  await enqueuePostCrawlJobs(ctx, job, { summarize: true });
+  expect(enqueue.mock.calls.map(([req]) => req.type)).toEqual([
+    "tag",
+    "summarize",
+  ]);
+  enqueue.mockRestore();
 });

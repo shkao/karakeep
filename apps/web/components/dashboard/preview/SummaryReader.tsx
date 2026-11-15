@@ -53,6 +53,8 @@ export default function SummaryReader({
               alt=""
               fill
               unoptimized
+              // It's the first thing on the page; fetch it at once.
+              preload
               className="object-contain"
               sizes="384px"
             />

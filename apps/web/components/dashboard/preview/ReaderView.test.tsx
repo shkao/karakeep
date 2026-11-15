@@ -116,3 +116,25 @@ test("refreshes once when a saved image fails", async () => {
   view.unmount();
   client.clear();
 });
+
+test("shows the blocked notice instead of a saved verification page", async () => {
+  vi.useRealTimers();
+  getBookmark.mockReset().mockResolvedValue({
+    content: {
+      type: "link",
+      htmlContent: "<p>环境异常</p>",
+      captureBlocked: true,
+    },
+  });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <ReaderView bookmarkId="bookmark" readOnly />
+    </QueryClientProvider>,
+  );
+
+  expect(await screen.findByText("preview.capture_blocked")).toBeTruthy();
+  expect(screen.queryByText("环境异常")).toBeNull();
+});

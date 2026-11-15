@@ -135,6 +135,7 @@ import {
   resolveMetadata,
 } from "./utils/metadataResolver";
 import { runParseSubprocess } from "./utils/parseSubprocess";
+import { fetchInstagramCoverUrl } from "./utils/instagramCover";
 import { installRedirectGuard } from "./utils/redirectGuard";
 
 const tracer = getTracer("@karakeep/workers");
@@ -952,6 +953,7 @@ export const crawlAndParseUrl = traced(
       pdf: Buffer | undefined;
       statusCode: number | null;
       url: string;
+      coverImageUrl?: string | null;
     };
 
     if (precrawledArchiveAssetId) {
@@ -981,6 +983,7 @@ export const crawlAndParseUrl = traced(
       pdf,
       statusCode,
       url: browserUrl,
+      coverImageUrl,
     } = result;
 
     // Track status code in Prometheus
@@ -1045,6 +1048,10 @@ export const crawlAndParseUrl = traced(
       );
     }
     const meta = resolveMetadata(renderMeta, probeMetadata, renderBlocked);
+    // Instagram's og:image is a cropped square; prefer the embed's full image.
+    if (coverImageUrl && !renderIsChallengePage) {
+      meta.image = coverImageUrl;
+    }
     const readerViewReasons: ZReaderViewReason[] | null = readerViewAssessment
       ? renderIsChallengePage &&
         !readerViewAssessment.reasons.includes("challenge_page")
@@ -1234,10 +1241,13 @@ export const crawlAndParseUrl = traced(
         );
       }
 
-      const screenshotAssetInfo = await raceWith(
-        storeCapturedAsset(ctx, "screenshot", screenshot),
-        abortRace(abortSignal),
-      );
+      // A screenshot of a verification page isn't worth keeping.
+      const screenshotAssetInfo = renderIsChallengePage
+        ? null
+        : await raceWith(
+            storeCapturedAsset(ctx, "screenshot", screenshot),
+            abortRace(abortSignal),
+          );
       if (screenshotAssetInfo) {
         stagedAssetIds.add(screenshotAssetInfo.assetId);
       }
@@ -1417,6 +1427,14 @@ export const crawlAndParseUrl = traced(
             txn,
           );
           assetIdsToDelete.push(oldAssets.screenshotAssetId);
+        } else if (renderIsChallengePage && oldAssets.screenshotAssetId) {
+          // This capture replaces the page, and its screenshot wasn't kept;
+          // the old one would sit beside a verification page.
+          txn
+            .delete(assets)
+            .where(eq(assets.id, oldAssets.screenshotAssetId))
+            .run();
+          assetIdsToDelete.push(oldAssets.screenshotAssetId);
         }
         if (pdfAssetInfo) {
           updateAsset(
@@ -1522,6 +1540,8 @@ interface CrawlPageResult {
   pdf: Buffer | undefined;
   statusCode: number;
   url: string;
+  // An uncropped cover from the site's embed page (Instagram), if any.
+  coverImageUrl?: string | null;
 }
 
 // Exported for the adhoc crawl CLI (scripts/crawlAdhoc.ts).
@@ -1648,13 +1668,20 @@ export const crawlPage = traced(
         activePage,
         forceStorePdf,
       );
+      const statusCode = mainDocumentStatus ?? response?.status() ?? 0;
+      // An error or block page has no post to take a cover from.
+      const coverImageUrl =
+        statusCode < 400
+          ? await fetchInstagramCoverUrl(context, url, abortSignal)
+          : null;
 
       return {
         htmlContent,
-        statusCode: mainDocumentStatus ?? response?.status() ?? 0,
+        statusCode,
         screenshot,
         pdf,
         url: activePage.url(),
+        coverImageUrl,
       };
     } finally {
       await closePageAndContext(ctx, page, context, browser);
@@ -2062,7 +2089,7 @@ const browserlessCrawlPage = traced(
  * (tagging/summarization/embeddings), search reindexing, video download, and
  * the "crawled" webhook.
  */
-async function enqueuePostCrawlJobs(
+export async function enqueuePostCrawlJobs(
   ctx: CrawlContext,
   job: DequeuedJob<ZCrawlLinkRequest>,
   { summarize }: { summarize: boolean },
