@@ -183,14 +183,16 @@ function LinkMetadata({
   readOnly: boolean;
 }) {
   const { t } = useTranslation();
-  const { section } = useLinkSection(bookmark);
+  const { section, instagramArticle } = useLinkSection(bookmark);
   if (bookmark.content.type !== BookmarkTypes.LINK) {
     return null;
   }
   const { author, publisher, datePublished } = bookmark.content;
   const sourceUrl = getSourceUrl(bookmark);
   const hasTitleBlock =
-    section === "cached" && !isBookmarkStillCrawling(bookmark);
+    section === "cached" &&
+    !instagramArticle &&
+    !isBookmarkStillCrawling(bookmark);
   const isPublisherRepeated =
     !!publisher &&
     (isSameName(publisher, author) ||
@@ -238,9 +240,11 @@ function DetailsTitle({ bookmark }: { bookmark: ZBookmark }) {
 
 /** Only for the views that leave the title out, like a screenshot or a video. */
 function LinkDetailsTitle({ bookmark }: { bookmark: ZBookmark }) {
-  const { section } = useLinkSection(bookmark);
+  const { section, instagramArticle } = useLinkSection(bookmark);
+  // A reel's reader view is its generated article, which may have no title.
   return isBookmarkStillCrawling(bookmark) ||
-    !SECTIONS_WITH_TITLE.includes(section) ? (
+    !SECTIONS_WITH_TITLE.includes(section) ||
+    (section === "cached" && instagramArticle) ? (
     <DetailsTitle bookmark={bookmark} />
   ) : null;
 }

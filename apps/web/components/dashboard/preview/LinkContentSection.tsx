@@ -324,6 +324,7 @@ export default function LinkContentSection({
         section={section}
         availableRenderers={availableRenderers}
         isInstagram={isInstagram}
+        instagramArticle={instagramArticle}
         readerAvailable={readerAvailable}
         compact={compactToolbar}
         columnRef={columnRef}

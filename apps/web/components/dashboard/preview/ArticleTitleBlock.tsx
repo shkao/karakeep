@@ -13,17 +13,8 @@ import {
   getSourceUrl,
 } from "@karakeep/shared/utils/bookmarkUtils";
 
+import { estimateReadingMinutes } from "./readingTime";
 import { hostname } from "./SavedPageOverview";
-
-const WORDS_READ_PER_MINUTE = 200;
-
-function estimateReadingMinutes(html: string) {
-  const words = html
-    .replace(/<[^>]+>/g, " ")
-    .split(/\s+/)
-    .filter(Boolean).length;
-  return Math.max(1, Math.round(words / WORDS_READ_PER_MINUTE));
-}
 
 /** Shares its cache entry with the article that ReaderView loads. */
 export function useReadingMinutes(bookmarkId: string, enabled = true) {

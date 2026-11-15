@@ -99,6 +99,7 @@ export default function LinkViewMenu({
   section,
   availableRenderers,
   isInstagram,
+  instagramArticle,
   readerAvailable,
   compact,
   columnRef,
@@ -113,6 +114,8 @@ export default function LinkViewMenu({
   availableRenderers: ContentRenderer[];
   /** Offers the summary reading view, which Instagram posts open on. */
   isInstagram: boolean;
+  /** A reel whose reader view is its generated article, not the saved page. */
+  instagramArticle: boolean;
   /** False when the reader view would only show a verification page. */
   readerAvailable: boolean;
   /** Uses the short names, for a bar that has little room. */
@@ -218,7 +221,11 @@ export default function LinkViewMenu({
 
   const current = views.find((view) => view.id === section) ?? views[0];
   const CurrentIcon = current.icon;
-  const isReader = section === "cached";
+  // The summary reads in the reader's type too, so it gets its settings.
+  const isReader =
+    section === "cached" || (section === "summary" && isInstagram);
+  // Full screen shows the saved page, which isn't what these views read.
+  const canOpenFullscreen = section === "cached" && !instagramArticle;
   const hasCustomSettings = hasSessionChanges || hasLocalOverrides;
   const settingsDot = hasCustomSettings && (
     <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden />
@@ -315,12 +322,14 @@ export default function LinkViewMenu({
                   {t("preview.reading_settings")}
                   <span className="ml-auto">{settingsDot}</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem inset asChild>
-                  <Link href={`/reader/${bookmark.id}`}>
-                    <ExpandIcon className="size-4" />
-                    {t("preview.open_fullscreen")}
-                  </Link>
-                </DropdownMenuItem>
+                {canOpenFullscreen && (
+                  <DropdownMenuItem inset asChild>
+                    <Link href={`/reader/${bookmark.id}`}>
+                      <ExpandIcon className="size-4" />
+                      {t("preview.open_fullscreen")}
+                    </Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuGroup>
             </>
           )}
